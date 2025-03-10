@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle } from "lucide-react";
+import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -12,7 +11,8 @@ import {
   getCurrentSession, 
   endCurrentSession,
   addApneaEvent,
-  SleepSession
+  SleepSession,
+  getUserSettings
 } from "@/utils/storage";
 import {
   initializeDetection,
@@ -32,6 +32,7 @@ const Tracking = () => {
   const [currentEvents, setCurrentEvents] = useState<number>(0);
   const [detectionMode, setDetectionMode] = useState<"real" | "simulation">("real");
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
+  const [isScheduled, setIsScheduled] = useState(false);
 
   // Check if there's an active session on load
   useEffect(() => {
@@ -43,8 +44,67 @@ const Tracking = () => {
       
       // Try to initialize the detection system
       initializeDetectionSystem();
+    } else {
+      // Check if auto mode is enabled and should start now
+      checkAutoSchedule();
     }
   }, []);
+
+  // Check auto schedule on regular intervals
+  useEffect(() => {
+    const settings = getUserSettings();
+    if (settings.detectionMode === "auto") {
+      const checkInterval = setInterval(() => {
+        checkAutoSchedule();
+      }, 60000); // Check every minute
+      
+      return () => clearInterval(checkInterval);
+    }
+  }, []);
+
+  // Check if we should start or stop tracking based on schedule
+  const checkAutoSchedule = () => {
+    const settings = getUserSettings();
+    
+    if (settings.detectionMode !== "auto") return;
+    
+    const now = new Date();
+    const currentDay = now.getDay(); // 0-6, Sunday to Saturday
+    
+    // Check if today is a scheduled day
+    if (!settings.schedule.weekdays[currentDay]) {
+      if (isTracking && isScheduled) {
+        // Stop tracking if it was started by schedule
+        stopTracking();
+      }
+      return;
+    }
+    
+    // Parse time strings to compare
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+    const [startHours, startMinutes] = settings.schedule.startTime.split(':').map(Number);
+    const startTimeMinutes = startHours * 60 + startMinutes;
+    
+    const [endHours, endMinutes] = settings.schedule.endTime.split(':').map(Number);
+    const endTimeMinutes = endHours * 60 + endMinutes;
+    
+    // Handle overnight schedules (end time is on the next day)
+    const isOvernightSchedule = endTimeMinutes < startTimeMinutes;
+    
+    // Check if current time is within schedule
+    const isWithinSchedule = isOvernightSchedule
+      ? (currentTime >= startTimeMinutes || currentTime <= endTimeMinutes)
+      : (currentTime >= startTimeMinutes && currentTime <= endTimeMinutes);
+    
+    if (isWithinSchedule && !isTracking) {
+      // Start tracking if within schedule and not already tracking
+      startTracking(true);
+    } else if (!isWithinSchedule && isTracking && isScheduled) {
+      // Stop tracking if outside schedule and currently tracking due to schedule
+      stopTracking();
+    }
+  };
 
   // Initialize detection system
   const initializeDetectionSystem = async () => {
@@ -143,7 +203,7 @@ const Tracking = () => {
     }
   };
 
-  const startTracking = async () => {
+  const startTracking = async (fromSchedule = false) => {
     try {
       await initializeDetectionSystem();
       
@@ -153,7 +213,13 @@ const Tracking = () => {
       setElapsedTime(0);
       setCurrentEvents(0);
       setApneaStatus("normal");
-      toast.success("Sleep tracking started");
+      setIsScheduled(fromSchedule);
+      
+      if (fromSchedule) {
+        toast.success("Scheduled sleep tracking started");
+      } else {
+        toast.success("Sleep tracking started");
+      }
     } catch (error) {
       console.error("Error starting tracking:", error);
       toast.error("Failed to start tracking");
@@ -172,6 +238,7 @@ const Tracking = () => {
         if (completedSession) {
           setCurrentSession(null);
           setIsTracking(false);
+          setIsScheduled(false);
           toast.success("Sleep tracking completed and saved");
           navigate("/");
         }
@@ -189,6 +256,9 @@ const Tracking = () => {
     
     // Show alert
     if (severity === "moderate" || severity === "severe") {
+      // Get settings to check which alert types to use
+      const settings = getUserSettings();
+      
       toast(
         <div className="flex flex-col">
           <span className="font-medium">Apnea Event Detected</span>
@@ -201,9 +271,27 @@ const Tracking = () => {
         }
       );
       
-      // Vibrate if supported
-      if (navigator.vibrate) {
+      // Vibrate if supported and enabled in settings
+      if (navigator.vibrate && settings.alertTypes.vibration) {
         navigator.vibrate(severity === "severe" ? [200, 100, 200] : [100, 50, 100]);
+      }
+      
+      // Play sound if enabled
+      if (settings.alertTypes.sound) {
+        // Play a beep sound
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(severity === "severe" ? 880 : 660, audioContext.currentTime);
+        
+        const gainNode = audioContext.createGain();
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.5);
       }
     }
     
@@ -221,7 +309,6 @@ const Tracking = () => {
     }, 5000);
   };
 
-  // Format elapsed time as HH:MM:SS
   const formatElapsedTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -278,7 +365,7 @@ const Tracking = () => {
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                       </span>
-                      <span>Tracking</span>
+                      <span>{isScheduled ? "Auto Tracking" : "Tracking"}</span>
                     </motion.div>
                   ) : (
                     <motion.div
@@ -313,6 +400,13 @@ const Tracking = () => {
                   </div>
                 </div>
               </div>
+
+              {isScheduled && (
+                <div className="flex items-center justify-center space-x-2 text-xs text-blue-500">
+                  <Calendar size={14} />
+                  <span>Running on auto schedule</span>
+                </div>
+              )}
 
               {micPermission === false && (
                 <motion.div 
@@ -355,7 +449,7 @@ const Tracking = () => {
               <ActionButton
                 variant="primary"
                 size="lg"
-                onClick={startTracking}
+                onClick={() => startTracking(false)}
                 icon={<Play size={18} />}
               >
                 Start Tracking

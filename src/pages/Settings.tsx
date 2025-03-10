@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sliders, Bell, Trash2, Moon, Battery, Clock, Database } from "lucide-react";
+import { Sliders, Bell, Trash2, Database, Clock, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import ActionButton from "@/components/ActionButton";
 import { UserSettings, getUserSettings, saveUserSettings, defaultSettings, deleteAllSessions } from "@/utils/storage";
+import TimeRangePicker from "@/components/TimeRangePicker";
+import WeekdaySelector from "@/components/WeekdaySelector";
 
 const Settings = () => {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
@@ -27,6 +29,32 @@ const Settings = () => {
       alertTypes: {
         ...prev.alertTypes,
         [alertType]: checked,
+      },
+    }));
+    setIsDirty(true);
+  };
+
+  const handleScheduleChange = (startTime: string, endTime: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        startTime,
+        endTime,
+      },
+    }));
+    setIsDirty(true);
+  };
+
+  const handleWeekdayChange = (weekday: number, checked: boolean) => {
+    const updatedWeekdays = [...settings.schedule.weekdays];
+    updatedWeekdays[weekday] = checked;
+    
+    setSettings((prev) => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        weekdays: updatedWeekdays,
       },
     }));
     setIsDirty(true);
@@ -229,6 +257,33 @@ const Settings = () => {
                     </label>
                   </div>
                 </div>
+
+                {settings.detectionMode === "auto" && (
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                    <div className="mb-4">
+                      <div className="flex items-center mb-2">
+                        <Clock size={16} className="mr-2 text-primary" />
+                        <h3 className="font-medium">Schedule</h3>
+                      </div>
+                      <TimeRangePicker 
+                        startTime={settings.schedule.startTime} 
+                        endTime={settings.schedule.endTime}
+                        onChange={handleScheduleChange}
+                      />
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center mb-2">
+                        <Calendar size={16} className="mr-2 text-primary" />
+                        <h3 className="font-medium">Active Days</h3>
+                      </div>
+                      <WeekdaySelector 
+                        selectedDays={settings.schedule.weekdays}
+                        onChange={handleWeekdayChange}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <div className="flex justify-between mb-2">

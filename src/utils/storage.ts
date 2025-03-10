@@ -1,4 +1,3 @@
-
 // Define interfaces for our data structures
 export interface SleepSession {
   id: string;
@@ -25,6 +24,11 @@ export interface UserSettings {
   detectionMode: 'manual' | 'auto';
   sensitivity: number; // 1-10 scale
   dataRetentionDays: number;
+  schedule: {
+    startTime: string;
+    endTime: string;
+    weekdays: boolean[]; // Sunday to Saturday
+  };
 }
 
 // Default settings
@@ -37,6 +41,11 @@ export const defaultSettings: UserSettings = {
   detectionMode: 'manual',
   sensitivity: 5,
   dataRetentionDays: 30,
+  schedule: {
+    startTime: '22:00',
+    endTime: '07:00',
+    weekdays: [true, true, true, true, true, true, true], // All days enabled by default
+  },
 };
 
 // Storage keys
