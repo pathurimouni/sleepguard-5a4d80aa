@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getCurrentBreathingData } from "@/utils/apneaDetection";
 
 interface BreathingVisualizerProps {
   isTracking: boolean;
@@ -13,6 +13,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
 }) => {
   const [breathingData, setBreathingData] = useState<number[]>([]);
   const maxDataPoints = 100;
+  const updateInterval = 100; // ms
 
   useEffect(() => {
     if (!isTracking) {
@@ -20,35 +21,58 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
       return;
     }
 
-    // Simulate breathing data for demonstration
+    // Get real breathing data when tracking
     const interval = setInterval(() => {
-      setBreathingData((current) => {
-        const newData = [...current];
-        const normalPattern = Math.sin(Date.now() / 2000) * 0.5 + 0.5;
+      try {
+        // Get current audio data for visualization
+        const currentData = getCurrentBreathingData();
         
-        // Add some randomness and potential anomalies based on status
-        let value = normalPattern;
-        if (status === "warning") {
-          // Occasionally add irregularities for warning state
-          value += (Math.random() - 0.5) * 0.3;
-        } else if (status === "danger") {
-          // More severe irregularities for danger state
-          value = Math.random() < 0.2 ? 0.1 : normalPattern + (Math.random() - 0.5) * 0.5;
+        if (currentData.length > 0) {
+          setBreathingData((prevData) => {
+            const newData = [...prevData];
+            // Take the average of the current audio data
+            const value = currentData.reduce((sum, val) => sum + val, 0) / currentData.length;
+            newData.push(value);
+            
+            // Keep only the most recent data points
+            if (newData.length > maxDataPoints) {
+              newData.shift();
+            }
+            return newData;
+          });
         } else {
-          // Normal state with minimal noise
-          value += (Math.random() - 0.5) * 0.1;
+          // If no data, simulate breathing pattern as fallback
+          setBreathingData((current) => {
+            const newData = [...current];
+            const normalPattern = Math.sin(Date.now() / 2000) * 0.5 + 0.5;
+            
+            // Add some randomness and potential anomalies based on status
+            let value = normalPattern;
+            if (status === "warning") {
+              // Occasionally add irregularities for warning state
+              value += (Math.random() - 0.5) * 0.3;
+            } else if (status === "danger") {
+              // More severe irregularities for danger state
+              value = Math.random() < 0.2 ? 0.1 : normalPattern + (Math.random() - 0.5) * 0.5;
+            } else {
+              // Normal state with minimal noise
+              value += (Math.random() - 0.5) * 0.1;
+            }
+            
+            // Ensure value stays within bounds
+            value = Math.max(0, Math.min(1, value));
+            
+            newData.push(value);
+            if (newData.length > maxDataPoints) {
+              newData.shift();
+            }
+            return newData;
+          });
         }
-        
-        // Ensure value stays within bounds
-        value = Math.max(0, Math.min(1, value));
-        
-        newData.push(value);
-        if (newData.length > maxDataPoints) {
-          newData.shift();
-        }
-        return newData;
-      });
-    }, 100);
+      } catch (error) {
+        console.error("Error updating breathing visualization:", error);
+      }
+    }, updateInterval);
 
     return () => clearInterval(interval);
   }, [isTracking, status]);

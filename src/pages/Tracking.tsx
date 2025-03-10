@@ -14,6 +14,14 @@ import {
   addApneaEvent,
   SleepSession
 } from "@/utils/storage";
+import {
+  initializeDetection,
+  startListening,
+  stopListening,
+  startContinuousDetection,
+  AudioAnalysisResult,
+  generateTestApneaEvent
+} from "@/utils/apneaDetection";
 
 const Tracking = () => {
   const navigate = useNavigate();
@@ -22,6 +30,8 @@ const Tracking = () => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [apneaStatus, setApneaStatus] = useState<"normal" | "warning" | "danger">("normal");
   const [currentEvents, setCurrentEvents] = useState<number>(0);
+  const [detectionMode, setDetectionMode] = useState<"real" | "simulation">("real");
+  const [micPermission, setMicPermission] = useState<boolean | null>(null);
 
   // Check if there's an active session on load
   useEffect(() => {
@@ -30,8 +40,31 @@ const Tracking = () => {
       setCurrentSession(session);
       setIsTracking(true);
       setCurrentEvents(session.apneaEvents.length);
+      
+      // Try to initialize the detection system
+      initializeDetectionSystem();
     }
   }, []);
+
+  // Initialize detection system
+  const initializeDetectionSystem = async () => {
+    try {
+      const initialized = await initializeDetection();
+      if (initialized) {
+        console.log("Detection system initialized successfully");
+      } else {
+        console.log("Falling back to simulation mode");
+        setDetectionMode("simulation");
+        toast("Using simulation mode", {
+          description: "Could not initialize the detection system. Using simulated data instead.",
+          icon: <RefreshCw className="h-4 w-4" />,
+        });
+      }
+    } catch (error) {
+      console.error("Error initializing detection:", error);
+      setDetectionMode("simulation");
+    }
+  };
 
   // Update elapsed time for active session
   useEffect(() => {
@@ -42,24 +75,78 @@ const Tracking = () => {
       const now = new Date().getTime();
       const elapsed = Math.floor((now - startTime) / 1000);
       setElapsedTime(elapsed);
-
-      // Simulate random apnea events for demonstration
-      const random = Math.random();
-      if (random < 0.005) {
-        simulateApneaEvent("moderate");
-      } else if (random < 0.03) {
-        setApneaStatus("warning");
-        setTimeout(() => setApneaStatus("normal"), 3000);
-      } else if (random < 0.001) {
-        simulateApneaEvent("severe");
-      }
     }, 1000);
 
     return () => clearInterval(intervalId);
   }, [isTracking, currentSession]);
 
-  const startTracking = () => {
+  // Handle real-time detection when tracking
+  useEffect(() => {
+    if (!isTracking) return;
+
+    const setupRealTimeDetection = async () => {
+      try {
+        // Check if we're using real or simulation mode
+        if (detectionMode === "real") {
+          // Start listening to the microphone
+          const started = await startListening();
+          if (started) {
+            setMicPermission(true);
+            // Start the continuous detection
+            startContinuousDetection((result) => {
+              handleDetectionResult(result);
+            }, 2000); // Check every 2 seconds
+          } else {
+            setMicPermission(false);
+            // Fallback to simulation
+            setDetectionMode("simulation");
+            toast("Microphone access denied", {
+              description: "Falling back to simulation mode",
+              icon: <AlertTriangle className="h-4 w-4" />,
+            });
+          }
+        } else {
+          // Simulation mode
+          const simulationInterval = setInterval(() => {
+            const result = generateTestApneaEvent();
+            handleDetectionResult(result);
+          }, 2000);
+          
+          return () => clearInterval(simulationInterval);
+        }
+      } catch (error) {
+        console.error("Error in real-time detection:", error);
+        // Fallback to simulation in case of error
+        setDetectionMode("simulation");
+      }
+    };
+    
+    setupRealTimeDetection();
+    
+    // Cleanup
+    return () => {
+      if (detectionMode === "real") {
+        stopListening();
+      }
+    };
+  }, [isTracking, detectionMode]);
+
+  // Handle detection results (from real detection or simulation)
+  const handleDetectionResult = (result: AudioAnalysisResult) => {
+    if (result.isApnea) {
+      // Definite apnea detected
+      handleApneaEvent(result.pattern === "missing" ? "severe" : "moderate");
+    } else if (result.confidence > 0.5) {
+      // Potential apnea (warning)
+      setApneaStatus("warning");
+      setTimeout(() => setApneaStatus("normal"), 3000);
+    }
+  };
+
+  const startTracking = async () => {
     try {
+      await initializeDetectionSystem();
+      
       const session = startNewSession();
       setCurrentSession(session);
       setIsTracking(true);
@@ -76,6 +163,11 @@ const Tracking = () => {
   const stopTracking = () => {
     try {
       if (currentSession) {
+        // Stop real-time detection
+        if (detectionMode === "real") {
+          stopListening();
+        }
+        
         const completedSession = endCurrentSession();
         if (completedSession) {
           setCurrentSession(null);
@@ -90,7 +182,7 @@ const Tracking = () => {
     }
   };
 
-  const simulateApneaEvent = (severity: "mild" | "moderate" | "severe") => {
+  const handleApneaEvent = (severity: "mild" | "moderate" | "severe") => {
     // Update UI first
     setApneaStatus(severity === "mild" ? "warning" : "danger");
     setCurrentEvents((prev) => prev + 1);
@@ -119,7 +211,7 @@ const Tracking = () => {
     addApneaEvent({
       timestamp: new Date(),
       duration: Math.floor(Math.random() * 10) + 5, // 5-15 seconds
-      type: Math.random() > 0.7 ? "movement" : "breathing_pause",
+      type: severity === "severe" ? "breathing_pause" : "movement",
       severity,
     });
     
@@ -221,6 +313,26 @@ const Tracking = () => {
                   </div>
                 </div>
               </div>
+
+              {micPermission === false && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="text-amber-500 text-sm text-center"
+                >
+                  Microphone access denied. Using simulation mode.
+                </motion.div>
+              )}
+
+              {detectionMode === "simulation" && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="text-blue-500 text-xs text-center"
+                >
+                  Running in simulation mode (for demonstration purposes)
+                </motion.div>
+              )}
             </div>
           </motion.div>
 
