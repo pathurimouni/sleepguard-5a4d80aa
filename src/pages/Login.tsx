@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -115,10 +116,7 @@ const Login = () => {
             
             <div>
               <ActionButton
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleLogin(e as any);
-                }}
+                onClick={handleLogin}
                 variant="primary"
                 size="lg"
                 className="w-full"

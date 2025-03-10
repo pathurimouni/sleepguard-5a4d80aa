@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface ActionButtonProps {
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   children: React.ReactNode;
   variant?: "primary" | "secondary" | "outline" | "ghost" | "destructive";
   size?: "sm" | "md" | "lg" | "icon";
