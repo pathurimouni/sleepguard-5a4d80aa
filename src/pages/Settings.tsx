@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sliders, Bell, Trash2, Database, Clock, Calendar } from "lucide-react";
@@ -90,6 +89,44 @@ const Settings = () => {
     }
   };
 
+  const ToggleSwitch = ({ 
+    id, 
+    label, 
+    checked, 
+    onChange 
+  }: { 
+    id: string; 
+    label: string; 
+    checked: boolean; 
+    onChange: (checked: boolean) => void 
+  }) => (
+    <div className="flex items-center justify-between">
+      <label htmlFor={id} className="flex items-center space-x-2">
+        <span>{label}</span>
+      </label>
+      <div className="relative inline-flex">
+        <input
+          type="checkbox"
+          id={id}
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="sr-only"
+        />
+        <div
+          className={`block h-6 w-10 rounded-full transition-colors ${
+            checked ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"
+          }`}
+        />
+        <div
+          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-4" : "translate-x-0"
+          }`}
+          onClick={() => onChange(!checked)}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <PageTransition>
       <div className="page-container pt-8 md:pt-24 pb-24">
@@ -125,80 +162,26 @@ const Settings = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="onScreen" className="flex items-center space-x-2">
-                    <span>On-Screen Alerts</span>
-                  </label>
-                  <div className="relative inline-flex">
-                    <input
-                      type="checkbox"
-                      id="onScreen"
-                      checked={settings.alertTypes.onScreen}
-                      onChange={(e) => handleAlertTypeChange("onScreen", e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div
-                      className={`block h-6 w-10 rounded-full transition-colors ${
-                        settings.alertTypes.onScreen ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"
-                      }`}
-                    />
-                    <div
-                      className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                        settings.alertTypes.onScreen ? "translate-x-4" : "translate-x-0"
-                      }`}
-                    />
-                  </div>
-                </div>
+                <ToggleSwitch 
+                  id="onScreen" 
+                  label="On-Screen Alerts" 
+                  checked={settings.alertTypes.onScreen}
+                  onChange={(checked) => handleAlertTypeChange("onScreen", checked)}
+                />
 
-                <div className="flex items-center justify-between">
-                  <label htmlFor="vibration" className="flex items-center space-x-2">
-                    <span>Vibration</span>
-                  </label>
-                  <div className="relative inline-flex">
-                    <input
-                      type="checkbox"
-                      id="vibration"
-                      checked={settings.alertTypes.vibration}
-                      onChange={(e) => handleAlertTypeChange("vibration", e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div
-                      className={`block h-6 w-10 rounded-full transition-colors ${
-                        settings.alertTypes.vibration ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"
-                      }`}
-                    />
-                    <div
-                      className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                        settings.alertTypes.vibration ? "translate-x-4" : "translate-x-0"
-                      }`}
-                    />
-                  </div>
-                </div>
+                <ToggleSwitch 
+                  id="vibration" 
+                  label="Vibration" 
+                  checked={settings.alertTypes.vibration}
+                  onChange={(checked) => handleAlertTypeChange("vibration", checked)}
+                />
 
-                <div className="flex items-center justify-between">
-                  <label htmlFor="sound" className="flex items-center space-x-2">
-                    <span>Sound</span>
-                  </label>
-                  <div className="relative inline-flex">
-                    <input
-                      type="checkbox"
-                      id="sound"
-                      checked={settings.alertTypes.sound}
-                      onChange={(e) => handleAlertTypeChange("sound", e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div
-                      className={`block h-6 w-10 rounded-full transition-colors ${
-                        settings.alertTypes.sound ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"
-                      }`}
-                    />
-                    <div
-                      className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                        settings.alertTypes.sound ? "translate-x-4" : "translate-x-0"
-                      }`}
-                    />
-                  </div>
-                </div>
+                <ToggleSwitch 
+                  id="sound" 
+                  label="Sound" 
+                  checked={settings.alertTypes.sound}
+                  onChange={(checked) => handleAlertTypeChange("sound", checked)}
+                />
               </div>
             </motion.div>
 
