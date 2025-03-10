@@ -1,10 +1,9 @@
-
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Home, Moon, Settings, Info, Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface NavbarProps {
   appName?: string;
@@ -13,7 +12,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   
   const isActive = (path: string) => location.pathname === path;

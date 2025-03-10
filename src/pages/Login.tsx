@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -68,10 +67,7 @@ const Login = () => {
             </motion.p>
           </div>
           
-          <motion.form 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+          <form 
             onSubmit={handleLogin}
             className="space-y-6"
           >
@@ -119,7 +115,10 @@ const Login = () => {
             
             <div>
               <ActionButton
-                type="submit"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleLogin(e as any);
+                }}
                 variant="primary"
                 size="lg"
                 className="w-full"
@@ -133,7 +132,7 @@ const Login = () => {
             <div className="text-center text-sm text-muted-foreground">
               <p>Don't have an account? <button type="button" className="text-primary hover:underline" onClick={() => toast.info("Registration feature coming soon!")}>Sign up</button></p>
             </div>
-          </motion.form>
+          </form>
         </motion.div>
       </div>
     </PageTransition>
