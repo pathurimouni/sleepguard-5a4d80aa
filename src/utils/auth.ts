@@ -6,7 +6,7 @@ import { toast } from "sonner";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface User {
   id: string;
@@ -47,6 +47,7 @@ export const signUp = async (email: string, password: string): Promise<{ user: U
     if (error) throw error;
     
     if (data.user) {
+      toast.success("Signup successful! Please check your email for confirmation.");
       return { 
         user: {
           id: data.user.id,
@@ -102,6 +103,10 @@ export const signOut = async (): Promise<{ error: string | null }> => {
   try {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    
+    // Remove user from localStorage
+    localStorage.removeItem("sleepguard-user");
+    
     return { error: null };
   } catch (err: any) {
     console.error('Logout error:', err);

@@ -6,7 +6,7 @@ import { User, KeyRound, LogIn, Mail } from "lucide-react";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import ActionButton from "@/components/ActionButton";
-import { signIn } from "@/utils/auth";
+import { signIn, supabase } from "@/utils/auth";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -17,10 +17,27 @@ const Login = () => {
 
   // Check if user is already logged in
   useEffect(() => {
-    const user = localStorage.getItem("sleepguard-user");
-    if (user) {
-      navigate("/");
-    }
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate("/");
+      }
+    };
+    
+    checkSession();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session) {
+          navigate("/");
+        }
+      }
+    );
+    
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -144,7 +161,7 @@ const Login = () => {
             
             <div>
               <ActionButton
-                onClick={handleLogin}
+                type="submit"
                 variant="primary"
                 size="lg"
                 className="w-full"

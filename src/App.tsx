@@ -14,12 +14,44 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Navbar from "./components/Navbar";
+import { supabase } from "./utils/auth";
 
 const queryClient = new QueryClient();
 
 // Authentication wrapper component
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const isAuthenticated = localStorage.getItem("sleepguard-user") !== null;
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      setIsAuthenticated(!!data.session);
+    };
+    
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setIsAuthenticated(!!session);
+      }
+    );
+    
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
+  
+  // Show loading while checking auth
+  if (isAuthenticated === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse-breathe text-primary">
+          Loading SleepGuard...
+        </div>
+      </div>
+    );
+  }
   
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -32,10 +64,13 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Simulate checking authentication status
-    setTimeout(() => {
+    // Check authentication status
+    const checkSession = async () => {
+      await supabase.auth.getSession();
       setIsLoading(false);
-    }, 500);
+    };
+    
+    checkSession();
   }, []);
   
   if (isLoading) {
