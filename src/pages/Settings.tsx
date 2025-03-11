@@ -1,22 +1,24 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sliders, Bell, Trash2, Database, Clock, Calendar, UserRound, Upload } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import ActionButton from "@/components/ActionButton";
 import { UserSettings, getUserSettings, saveUserSettings, defaultSettings, deleteAllSessions } from "@/utils/storage";
-import TimeRangePicker from "@/components/TimeRangePicker";
-import WeekdaySelector from "@/components/WeekdaySelector";
-import { getCurrentUser, updateProfile } from "@/utils/auth";
+import { getCurrentUser } from "@/utils/auth";
 import { User } from "@/utils/auth";
-import { supabase } from "@/utils/auth";
+
+// Import new components
+import ProfileSection from "@/components/settings/ProfileSection";
+import AlertsSection from "@/components/settings/AlertsSection";
+import DetectionSection from "@/components/settings/DetectionSection";
+import DataManagementSection from "@/components/settings/DataManagementSection";
 
 const Settings = () => {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [isDirty, setIsDirty] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   
   useEffect(() => {
     const userSettings = getUserSettings();
@@ -103,92 +105,6 @@ const Settings = () => {
     }
   };
 
-  const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      setUploadingAvatar(true);
-      
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('You must select an image to upload.');
-      }
-      
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}.${fileExt}`;
-      const filePath = `${fileName}`;
-      
-      // Upload image to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-        
-      if (uploadError) {
-        throw uploadError;
-      }
-      
-      // Get the public URL
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-      
-      // Update user profile with avatar URL
-      const { error: updateError } = await updateProfile({ 
-        avatarUrl: urlData.publicUrl 
-      });
-      
-      if (updateError) {
-        throw updateError;
-      }
-      
-      // Update local user state with new avatar
-      setUser(prev => prev ? { ...prev, avatarUrl: urlData.publicUrl } : prev);
-      
-      toast.success('Profile picture updated successfully!');
-    } catch (error: any) {
-      console.error('Error uploading avatar:', error);
-      toast.error(error.message || 'Error uploading avatar');
-    } finally {
-      setUploadingAvatar(false);
-    }
-  };
-
-  const ToggleSwitch = ({ 
-    id, 
-    label, 
-    checked, 
-    onChange 
-  }: { 
-    id: string; 
-    label: string; 
-    checked: boolean; 
-    onChange: (checked: boolean) => void 
-  }) => (
-    <div className="flex items-center justify-between">
-      <label htmlFor={id} className="flex items-center space-x-2">
-        <span>{label}</span>
-      </label>
-      <div className="relative inline-flex">
-        <input
-          type="checkbox"
-          id={id}
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className="sr-only"
-        />
-        <div
-          className={`block h-6 w-10 rounded-full transition-colors ${
-            checked ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"
-          }`}
-        />
-        <div
-          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-            checked ? "translate-x-4" : "translate-x-0"
-          }`}
-          onClick={() => onChange(!checked)}
-        />
-      </div>
-    </div>
-  );
-
   return (
     <PageTransition>
       <div className="page-container pt-8 md:pt-24 pb-24">
@@ -223,48 +139,7 @@ const Settings = () => {
                 <h2 className="text-xl font-semibold">Profile</h2>
               </div>
               
-              <div className="flex flex-col items-center space-y-4">
-                <div className="relative">
-                  {user?.avatarUrl ? (
-                    <img 
-                      src={user.avatarUrl} 
-                      alt="Profile" 
-                      className="w-24 h-24 rounded-full object-cover border-2 border-primary" 
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                      <UserRound size={40} className="text-slate-400" />
-                    </div>
-                  )}
-                  
-                  <label 
-                    htmlFor="avatar-upload" 
-                    className="absolute bottom-0 right-0 p-1 bg-primary text-white rounded-full cursor-pointer hover:bg-primary/80 transition-colors"
-                  >
-                    <Upload size={16} />
-                  </label>
-                  
-                  <input 
-                    type="file"
-                    id="avatar-upload"
-                    accept="image/*"
-                    onChange={uploadAvatar}
-                    disabled={uploadingAvatar}
-                    className="hidden"
-                  />
-                </div>
-                
-                <div className="text-center">
-                  <h3 className="font-medium">{user?.username || user?.email || 'User'}</h3>
-                  <p className="text-sm text-muted-foreground">{user?.email}</p>
-                </div>
-                
-                {uploadingAvatar && (
-                  <div className="text-sm text-primary animate-pulse">
-                    Uploading...
-                  </div>
-                )}
-              </div>
+              <ProfileSection user={user} setUser={setUser} />
             </motion.div>
 
             <motion.div
@@ -273,33 +148,10 @@ const Settings = () => {
               transition={{ delay: 0.2 }}
               className="glass-panel p-6"
             >
-              <div className="flex items-center mb-4">
-                <Bell size={20} className="mr-2 text-primary" />
-                <h2 className="text-xl font-semibold">Alerts</h2>
-              </div>
-
-              <div className="space-y-4">
-                <ToggleSwitch 
-                  id="onScreen" 
-                  label="On-Screen Alerts" 
-                  checked={settings.alertTypes.onScreen}
-                  onChange={(checked) => handleAlertTypeChange("onScreen", checked)}
-                />
-
-                <ToggleSwitch 
-                  id="vibration" 
-                  label="Vibration" 
-                  checked={settings.alertTypes.vibration}
-                  onChange={(checked) => handleAlertTypeChange("vibration", checked)}
-                />
-
-                <ToggleSwitch 
-                  id="sound" 
-                  label="Sound" 
-                  checked={settings.alertTypes.sound}
-                  onChange={(checked) => handleAlertTypeChange("sound", checked)}
-                />
-              </div>
+              <AlertsSection 
+                settings={settings} 
+                handleAlertTypeChange={handleAlertTypeChange} 
+              />
             </motion.div>
 
             <motion.div
@@ -308,106 +160,12 @@ const Settings = () => {
               transition={{ delay: 0.3 }}
               className="glass-panel p-6"
             >
-              <div className="flex items-center mb-4">
-                <Sliders size={20} className="mr-2 text-primary" />
-                <h2 className="text-xl font-semibold">Detection</h2>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <p className="mb-2">Detection Mode</p>
-                  <div className="flex space-x-4">
-                    <label
-                      htmlFor="manual"
-                      className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md border cursor-pointer transition-colors ${
-                        settings.detectionMode === "manual"
-                          ? "border-primary bg-primary/10 text-primary font-medium"
-                          : "border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        id="manual"
-                        name="detectionMode"
-                        value="manual"
-                        checked={settings.detectionMode === "manual"}
-                        onChange={() => handleChange("detectionMode", "manual")}
-                        className="sr-only"
-                      />
-                      <span>Manual</span>
-                    </label>
-                    <label
-                      htmlFor="auto"
-                      className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md border cursor-pointer transition-colors ${
-                        settings.detectionMode === "auto"
-                          ? "border-primary bg-primary/10 text-primary font-medium"
-                          : "border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        id="auto"
-                        name="detectionMode"
-                        value="auto"
-                        checked={settings.detectionMode === "auto"}
-                        onChange={() => handleChange("detectionMode", "auto")}
-                        className="sr-only"
-                      />
-                      <span>Auto</span>
-                    </label>
-                  </div>
-                </div>
-
-                {settings.detectionMode === "auto" && (
-                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
-                    <div className="mb-4">
-                      <div className="flex items-center mb-2">
-                        <Clock size={16} className="mr-2 text-primary" />
-                        <h3 className="font-medium">Schedule</h3>
-                      </div>
-                      <TimeRangePicker 
-                        startTime={settings.schedule.startTime} 
-                        endTime={settings.schedule.endTime}
-                        onChange={handleScheduleChange}
-                      />
-                    </div>
-                    
-                    <div>
-                      <div className="flex items-center mb-2">
-                        <Calendar size={16} className="mr-2 text-primary" />
-                        <h3 className="font-medium">Active Days</h3>
-                      </div>
-                      <WeekdaySelector 
-                        selectedDays={settings.schedule.weekdays}
-                        onChange={handleWeekdayChange}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <label htmlFor="sensitivity" className="text-sm">
-                      Detection Sensitivity
-                    </label>
-                    <span className="text-sm font-medium">{settings.sensitivity}</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="sensitivity"
-                    min="1"
-                    max="10"
-                    step="1"
-                    value={settings.sensitivity}
-                    onChange={(e) => handleChange("sensitivity", parseInt(e.target.value))}
-                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>Low</span>
-                    <span>High</span>
-                  </div>
-                </div>
-              </div>
+              <DetectionSection 
+                settings={settings}
+                handleChange={handleChange}
+                handleScheduleChange={handleScheduleChange}
+                handleWeekdayChange={handleWeekdayChange}
+              />
             </motion.div>
 
             <motion.div
@@ -416,43 +174,11 @@ const Settings = () => {
               transition={{ delay: 0.4 }}
               className="glass-panel p-6"
             >
-              <div className="flex items-center mb-4">
-                <Database size={20} className="mr-2 text-primary" />
-                <h2 className="text-xl font-semibold">Data Management</h2>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <label htmlFor="dataRetention" className="text-sm">
-                      Data Retention Period
-                    </label>
-                    <span className="text-sm font-medium">{settings.dataRetentionDays} days</span>
-                  </div>
-                  <input
-                    type="range"
-                    id="dataRetention"
-                    min="7"
-                    max="90"
-                    step="1"
-                    value={settings.dataRetentionDays}
-                    onChange={(e) => handleChange("dataRetentionDays", parseInt(e.target.value))}
-                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <ActionButton
-                    variant="destructive"
-                    size="md"
-                    className="w-full"
-                    icon={<Trash2 size={16} />}
-                    onClick={handleDeleteAllData}
-                  >
-                    Delete All Sleep Data
-                  </ActionButton>
-                </div>
-              </div>
+              <DataManagementSection 
+                settings={settings}
+                handleChange={handleChange}
+                handleDeleteAllData={handleDeleteAllData}
+              />
             </motion.div>
 
             <div className="flex justify-between pt-4">
