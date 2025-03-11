@@ -1,3 +1,4 @@
+
 import { createClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
@@ -7,6 +8,30 @@ const supabaseUrl = "https://nspeqndfwuwpfthesgdx.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zcGVxbmRmd3V3cGZ0aGVzZ2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2Mzk0MTUsImV4cCI6MjA1NzIxNTQxNX0.Fc9kZnMqAt5dMRTpnMLjC_TAuloJ3qApDRMuuHENVgI";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Create a storage bucket for avatars if it doesn't exist
+const setupStorage = async () => {
+  try {
+    // Check if the avatars bucket exists
+    const { data, error } = await supabase.storage.getBucket('avatars');
+    
+    if (error && error.message.includes('does not exist')) {
+      // Create the bucket
+      const { error: createError } = await supabase.storage.createBucket('avatars', {
+        public: true
+      });
+      
+      if (createError) {
+        console.error('Error creating avatars bucket:', createError);
+      }
+    }
+  } catch (error) {
+    console.error('Error setting up storage:', error);
+  }
+};
+
+// Initialize storage on script load
+setupStorage();
 
 export interface User {
   id: string;
