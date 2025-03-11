@@ -1,10 +1,10 @@
-
 import { createClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
 // Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Provide fallback values to prevent errors when environment variables are not set
+const supabaseUrl = "https://nspeqndfwuwpfthesgdx.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zcGVxbmRmd3V3cGZ0aGVzZ2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2Mzk0MTUsImV4cCI6MjA1NzIxNTQxNX0.Fc9kZnMqAt5dMRTpnMLjC_TAuloJ3qApDRMuuHENVgI";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

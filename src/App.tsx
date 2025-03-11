@@ -24,8 +24,13 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   
   useEffect(() => {
     const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsAuthenticated(!!data.session);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setIsAuthenticated(!!data.session);
+      } catch (error) {
+        console.error("Auth check error:", error);
+        setIsAuthenticated(false);
+      }
     };
     
     checkAuth();
@@ -66,8 +71,13 @@ const App = () => {
   useEffect(() => {
     // Check authentication status
     const checkSession = async () => {
-      await supabase.auth.getSession();
-      setIsLoading(false);
+      try {
+        await supabase.auth.getSession();
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Session check error:", error);
+        setIsLoading(false);
+      }
     };
     
     checkSession();
