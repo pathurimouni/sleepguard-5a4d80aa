@@ -11,6 +11,7 @@ interface ActionButtonProps {
   className?: string;
   disabled?: boolean;
   icon?: React.ReactNode;
+  type?: "button" | "submit" | "reset";
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({
@@ -21,6 +22,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   className,
   disabled = false,
   icon,
+  type = "button",
 }) => {
   const variantStyles = {
     primary: "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -43,6 +45,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
       whileTap={{ scale: disabled ? 1 : 0.98 }}
       onClick={onClick}
       disabled={disabled}
+      type={type}
       className={cn(
         "relative inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background",
         variantStyles[variant],
