@@ -1,55 +1,52 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { User, KeyRound, LogIn, Mail } from "lucide-react";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import ActionButton from "@/components/ActionButton";
-import { signIn } from "@/utils/auth";
+import { signUp } from "@/utils/auth";
 
-const Login = () => {
+const Register = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Check if user is already logged in
-  useEffect(() => {
-    const user = localStorage.getItem("sleepguard-user");
-    if (user) {
-      navigate("/");
-    }
-  }, [navigate]);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     
-    try {
-      const { user, error } = await signIn(email, password);
-      
-      if (error) {
-        toast.error(error);
-        setError(error);
-      } else if (user) {
-        // Store user info
-        localStorage.setItem("sleepguard-user", JSON.stringify({ 
-          username: user.email,
-          id: user.id 
-        }));
-        
-        toast.success("Login successful!");
-        navigate("/");
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      toast.error("Connection error. Please try again.");
-      setError("Connection failed. Please check your internet connection.");
-    } finally {
+    // Basic validation
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
       setIsLoading(false);
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      setIsLoading(false);
+      return;
+    }
+    
+    const { user, error } = await signUp(email, password);
+    
+    setIsLoading(false);
+    
+    if (error) {
+      toast.error(error);
+      setError(error);
+    } else {
+      toast.success("Account created! Please check your email for confirmation.");
+      
+      // Note: In a real production app, you might want to redirect to a verification page
+      // But for development, we can navigate to login
+      navigate("/login");
     }
   };
 
@@ -77,7 +74,7 @@ const Login = () => {
               transition={{ delay: 0.3 }}
               className="text-3xl font-bold mb-2"
             >
-              Welcome to SleepGuard
+              Create Account
             </motion.h1>
             
             <motion.p
@@ -86,12 +83,12 @@ const Login = () => {
               transition={{ delay: 0.4 }}
               className="text-muted-foreground"
             >
-              Monitor your sleep patterns and detect apnea events
+              Join SleepGuard and monitor your sleep patterns
             </motion.p>
           </div>
           
           <form 
-            onSubmit={handleLogin}
+            onSubmit={handleRegister}
             className="space-y-6"
           >
             {error && (
@@ -135,7 +132,28 @@ const Login = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full py-2 pl-10 pr-3 border border-slate-300 dark:border-slate-600 rounded-md bg-transparent"
-                    placeholder="Enter your password"
+                    placeholder="Create a password"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm mb-1">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <KeyRound size={16} />
+                  </span>
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full py-2 pl-10 pr-3 border border-slate-300 dark:border-slate-600 rounded-md bg-transparent"
+                    placeholder="Confirm your password"
                     required
                   />
                 </div>
@@ -144,19 +162,19 @@ const Login = () => {
             
             <div>
               <ActionButton
-                onClick={handleLogin}
+                onClick={handleRegister}
                 variant="primary"
                 size="lg"
                 className="w-full"
                 disabled={isLoading}
                 icon={isLoading ? undefined : <LogIn size={16} />}
               >
-                {isLoading ? "Logging in..." : "Login"}
+                {isLoading ? "Creating Account..." : "Sign Up"}
               </ActionButton>
             </div>
             
             <div className="text-center text-sm text-muted-foreground">
-              <p>Don't have an account? <Link to="/register" className="text-primary hover:underline">Sign up</Link></p>
+              <p>Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link></p>
             </div>
           </form>
         </motion.div>
@@ -165,4 +183,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;
