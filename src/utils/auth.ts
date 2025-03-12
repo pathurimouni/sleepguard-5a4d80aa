@@ -9,36 +9,6 @@ const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Create a storage bucket for avatars if it doesn't exist
-const setupStorage = async () => {
-  try {
-    // Check if the avatars bucket exists
-    const { data, error } = await supabase.storage.getBucket('avatars');
-    
-    if (error && error.message.includes('does not exist')) {
-      // Create the bucket
-      const { error: createError } = await supabase.storage.createBucket('avatars', {
-        public: true
-      });
-      
-      if (createError) {
-        console.error('Error creating avatars bucket:', createError);
-      } else {
-        // Set bucket to public
-        const { error: policyError } = await supabase.storage.from('avatars').createSignedUrl('dummy.txt', 60);
-        if (policyError) {
-          console.error('Error setting bucket policy:', policyError);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error setting up storage:', error);
-  }
-};
-
-// Initialize storage on script load
-setupStorage();
-
 export interface User {
   id: string;
   email: string;
@@ -146,6 +116,9 @@ export const signOut = async (): Promise<{ error: string | null }> => {
     
     // Remove user from localStorage
     localStorage.removeItem("sleepguard-user");
+    
+    // Force redirect to login page
+    window.location.href = "/login";
     
     return { error: null };
   } catch (err: any) {

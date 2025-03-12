@@ -13,25 +13,6 @@ interface ProfileSectionProps {
 const ProfileSection: React.FC<ProfileSectionProps> = ({ user, setUser }) => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  const createBucketIfNotExists = async () => {
-    try {
-      // Check if the avatars bucket exists
-      const { data, error } = await supabase.storage.getBucket('avatars');
-      
-      if (error && error.message.includes('does not exist')) {
-        // Create the bucket
-        await supabase.storage.createBucket('avatars', {
-          public: true
-        });
-        
-        // Create a public policy for the bucket
-        await supabase.storage.from('avatars').createSignedUrl('dummy-path', 60);
-      }
-    } catch (error) {
-      console.error('Error setting up storage:', error);
-    }
-  };
-
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploadingAvatar(true);
@@ -40,16 +21,13 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, setUser }) => {
         throw new Error('You must select an image to upload.');
       }
       
-      // Create bucket if it doesn't exist
-      await createBucketIfNotExists();
-      
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
       const fileName = `${user?.id || 'anonymous'}.${fileExt}`;
       const filePath = `${fileName}`;
       
-      // Upload image to Supabase Storage
-      const { error: uploadError } = await supabase.storage
+      // Upload image to Supabase Storage using the avatars bucket we created
+      const { error: uploadError, data } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
         
