@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Home, Moon, Settings, Info, Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { getCurrentUser, signOut } from "@/utils/auth";
 
 interface NavbarProps {
   appName?: string;
@@ -14,15 +16,22 @@ const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => 
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
+  const [user, setUser] = useState(null);
   
   const isActive = (path: string) => location.pathname === path;
   
-  const user = localStorage.getItem("sleepguard-user") 
-    ? JSON.parse(localStorage.getItem("sleepguard-user")!) 
-    : null;
+  useEffect(() => {
+    const checkAuth = async () => {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    };
+    
+    checkAuth();
+  }, [location.pathname]);
   
-  const handleLogout = () => {
-    localStorage.removeItem("sleepguard-user");
+  const handleLogout = async () => {
+    await signOut();
+    setUser(null);
     navigate("/login");
   };
 

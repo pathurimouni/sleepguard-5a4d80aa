@@ -23,6 +23,12 @@ const setupStorage = async () => {
       
       if (createError) {
         console.error('Error creating avatars bucket:', createError);
+      } else {
+        // Set bucket to public
+        const { error: policyError } = await supabase.storage.from('avatars').createSignedUrl('dummy.txt', 60);
+        if (policyError) {
+          console.error('Error setting bucket policy:', policyError);
+        }
       }
     }
   } catch (error) {
@@ -44,6 +50,8 @@ export const getCurrentUser = async (): Promise<User | null> => {
   const { data: { user }, error } = await supabase.auth.getUser();
   
   if (error || !user) {
+    // Clear any leftover user data in localStorage
+    localStorage.removeItem("sleepguard-user");
     return null;
   }
   
@@ -54,12 +62,17 @@ export const getCurrentUser = async (): Promise<User | null> => {
     .eq('id', user.id)
     .maybeSingle();
   
-  return {
+  // Update local storage with current user
+  const userData = {
     id: user.id,
     email: user.email || '',
     username: profile?.username || user.email?.split('@')[0] || '',
     avatarUrl: profile?.avatar_url || '',
   };
+  
+  localStorage.setItem("sleepguard-user", JSON.stringify(userData));
+  
+  return userData;
 };
 
 export const signUp = async (email: string, password: string): Promise<{ user: User | null; error: string | null }> => {
@@ -106,15 +119,17 @@ export const signIn = async (email: string, password: string): Promise<{ user: U
         .eq('id', data.user.id)
         .maybeSingle();
       
-      return { 
-        user: {
-          id: data.user.id,
-          email: data.user.email || '',
-          username: profile?.username || data.user.email?.split('@')[0] || '',
-          avatarUrl: profile?.avatar_url || '',
-        }, 
-        error: null 
+      const userData = {
+        id: data.user.id,
+        email: data.user.email || '',
+        username: profile?.username || data.user.email?.split('@')[0] || '',
+        avatarUrl: profile?.avatar_url || '',
       };
+      
+      // Update local storage
+      localStorage.setItem("sleepguard-user", JSON.stringify(userData));
+      
+      return { user: userData, error: null };
     }
     
     return { user: null, error: 'Unknown error occurred' };
@@ -158,6 +173,17 @@ export const updateProfile = async (profileData: { username?: string; avatarUrl?
       .eq('id', user.id);
     
     if (error) throw error;
+    
+    // Update local storage if needed
+    const currentUser = JSON.parse(localStorage.getItem("sleepguard-user") || "null");
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        ...(profileData.username && { username: profileData.username }),
+        ...(profileData.avatarUrl && { avatarUrl: profileData.avatarUrl }),
+      };
+      localStorage.setItem("sleepguard-user", JSON.stringify(updatedUser));
+    }
     
     return { error: null };
   } catch (err: any) {

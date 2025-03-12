@@ -13,6 +13,25 @@ interface ProfileSectionProps {
 const ProfileSection: React.FC<ProfileSectionProps> = ({ user, setUser }) => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  const createBucketIfNotExists = async () => {
+    try {
+      // Check if the avatars bucket exists
+      const { data, error } = await supabase.storage.getBucket('avatars');
+      
+      if (error && error.message.includes('does not exist')) {
+        // Create the bucket
+        await supabase.storage.createBucket('avatars', {
+          public: true
+        });
+        
+        // Create a public policy for the bucket
+        await supabase.storage.from('avatars').createSignedUrl('dummy-path', 60);
+      }
+    } catch (error) {
+      console.error('Error setting up storage:', error);
+    }
+  };
+
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploadingAvatar(true);
@@ -21,9 +40,12 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, setUser }) => {
         throw new Error('You must select an image to upload.');
       }
       
+      // Create bucket if it doesn't exist
+      await createBucketIfNotExists();
+      
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}.${fileExt}`;
+      const fileName = `${user?.id || 'anonymous'}.${fileExt}`;
       const filePath = `${fileName}`;
       
       // Upload image to Supabase Storage
@@ -41,16 +63,18 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, setUser }) => {
         .getPublicUrl(filePath);
       
       // Update user profile with avatar URL
-      const { error: updateError } = await updateProfile({ 
-        avatarUrl: urlData.publicUrl 
-      });
-      
-      if (updateError) {
-        throw updateError;
+      if (user) {
+        const { error: updateError } = await updateProfile({ 
+          avatarUrl: urlData.publicUrl 
+        });
+        
+        if (updateError) {
+          throw updateError;
+        }
+        
+        // Update local user state with new avatar
+        setUser(prev => prev ? { ...prev, avatarUrl: urlData.publicUrl } : prev);
       }
-      
-      // Update local user state with new avatar
-      setUser(prev => prev ? { ...prev, avatarUrl: urlData.publicUrl } : prev);
       
       toast.success('Profile picture updated successfully!');
     } catch (error: any) {
@@ -94,8 +118,10 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, setUser }) => {
       </div>
       
       <div className="text-center">
-        <h3 className="font-medium">{user?.username || user?.email || 'User'}</h3>
-        <p className="text-sm text-muted-foreground">{user?.email}</p>
+        <h3 className="font-medium">{user?.username || user?.email?.split('@')[0] || 'User'}</h3>
+        {user?.email && (
+          <p className="text-sm text-muted-foreground">{user.email}</p>
+        )}
       </div>
       
       {uploadingAvatar && (

@@ -8,8 +8,10 @@ import ActionButton from "@/components/ActionButton";
 import { UserSettings, getUserSettings, saveUserSettings, defaultSettings, deleteAllSessions } from "@/utils/storage";
 import { getCurrentUser } from "@/utils/auth";
 import { User } from "@/utils/auth";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/utils/auth";
 
-// Import new components
+// Import components
 import ProfileSection from "@/components/settings/ProfileSection";
 import AlertsSection from "@/components/settings/AlertsSection";
 import DetectionSection from "@/components/settings/DetectionSection";
@@ -19,6 +21,7 @@ const Settings = () => {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [isDirty, setIsDirty] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
   
   useEffect(() => {
     const userSettings = getUserSettings();
@@ -28,10 +31,28 @@ const Settings = () => {
     const fetchUser = async () => {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
+      
+      // Redirect to login if not authenticated
+      if (!currentUser) {
+        navigate("/login");
+      }
     };
     
     fetchUser();
-  }, []);
+    
+    // Auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          navigate("/login");
+        }
+      }
+    );
+    
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [navigate]);
 
   const handleChange = (field: keyof UserSettings, value: any) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
@@ -45,6 +66,14 @@ const Settings = () => {
         ...prev.alertTypes,
         [alertType]: checked,
       },
+    }));
+    setIsDirty(true);
+  };
+  
+  const handleRingtoneChange = (ringtone: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      ringtone: ringtone,
     }));
     setIsDirty(true);
   };
@@ -105,6 +134,11 @@ const Settings = () => {
     }
   };
 
+  // If not authenticated, show minimal loading state
+  if (!user) {
+    return <div className="flex items-center justify-center min-h-screen">Loading settings...</div>;
+  }
+
   return (
     <PageTransition>
       <div className="page-container pt-8 md:pt-24 pb-24">
@@ -150,7 +184,8 @@ const Settings = () => {
             >
               <AlertsSection 
                 settings={settings} 
-                handleAlertTypeChange={handleAlertTypeChange} 
+                handleAlertTypeChange={handleAlertTypeChange}
+                handleRingtoneChange={handleRingtoneChange}
               />
             </motion.div>
 

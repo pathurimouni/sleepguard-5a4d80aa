@@ -1,3 +1,4 @@
+
 // Define interfaces for our data structures
 export interface SleepSession {
   id: string;
@@ -21,6 +22,7 @@ export interface UserSettings {
     vibration: boolean;
     sound: boolean;
   };
+  ringtone: string;
   detectionMode: 'manual' | 'auto';
   sensitivity: number; // 1-10 scale
   dataRetentionDays: number;
@@ -38,6 +40,7 @@ export const defaultSettings: UserSettings = {
     vibration: true,
     sound: false,
   },
+  ringtone: "/sounds/classic-beep.mp3",
   detectionMode: 'manual',
   sensitivity: 5,
   dataRetentionDays: 30,
@@ -101,7 +104,12 @@ export const getUserSettings = (): UserSettings => {
   if (!settingsJson) return defaultSettings;
   
   try {
-    return JSON.parse(settingsJson);
+    const savedSettings = JSON.parse(settingsJson);
+    // Ensure ringtone field exists even in older saved settings
+    if (!savedSettings.ringtone) {
+      savedSettings.ringtone = defaultSettings.ringtone;
+    }
+    return savedSettings;
   } catch (error) {
     console.error('Error parsing user settings', error);
     return defaultSettings;
