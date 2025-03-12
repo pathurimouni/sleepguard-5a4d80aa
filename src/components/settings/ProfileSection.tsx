@@ -23,8 +23,10 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ user, setUser }) => {
       
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id || 'anonymous'}.${fileExt}`;
-      const filePath = `${fileName}`;
+      
+      // Create a folder with user ID to comply with RLS policies
+      const userId = user?.id || 'anonymous';
+      const filePath = `${userId}/${Date.now()}.${fileExt}`;
       
       // Upload image to Supabase Storage using the avatars bucket we created
       const { error: uploadError, data } = await supabase.storage

@@ -14,19 +14,22 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Navbar from "./components/Navbar";
-import { supabase } from "./utils/auth";
+import { supabase, getCurrentUser, User } from "./utils/auth";
 
 const queryClient = new QueryClient();
 
 // Authentication wrapper component
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        setIsAuthenticated(!!data.session);
+        // Get user data including profile details
+        const userData = await getCurrentUser();
+        setUser(userData);
+        setIsAuthenticated(!!userData);
       } catch (error) {
         console.error("Auth check error:", error);
         setIsAuthenticated(false);
@@ -37,8 +40,15 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setIsAuthenticated(!!session);
+      async (_event, session) => {
+        if (session) {
+          const userData = await getCurrentUser();
+          setUser(userData);
+          setIsAuthenticated(true);
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       }
     );
     
@@ -62,7 +72,9 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     return <Navigate to="/login" replace />;
   }
   
-  return children;
+  // Clone the child element and pass the user data as prop
+  const childrenWithProps = React.cloneElement(children, { user, setUser });
+  return childrenWithProps;
 };
 
 const App = () => {
