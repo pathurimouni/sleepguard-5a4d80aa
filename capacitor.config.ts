@@ -7,8 +7,10 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
-    // For development, enable local network access
+    // For development, enable local network access and configure live reload
     allowNavigation: ['*'],
+    url: 'https://14fac35b-04b4-4b95-a4e2-e9c453a57716.lovableproject.com?forceHideBadge=true',
+    cleartext: true
   },
   plugins: {
     // Configure permissions for the app
