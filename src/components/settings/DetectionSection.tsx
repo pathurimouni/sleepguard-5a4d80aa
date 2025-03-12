@@ -18,6 +18,11 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
   handleScheduleChange, 
   handleWeekdayChange 
 }) => {
+  // Ensure settings is defined
+  if (!settings) {
+    return <div>Loading settings...</div>;
+  }
+
   return (
     <div>
       <div className="flex items-center mb-4">

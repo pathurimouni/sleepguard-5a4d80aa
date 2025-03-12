@@ -18,6 +18,7 @@ let audioProcessor: any = null;
 let detectionInterval: number | null = null;
 let isInitialized = false;
 let isListening = false;
+let sensitivityMultiplier = 1; // Default sensitivity
 
 // Initialize the audio processing pipeline
 export const initializeDetection = async (): Promise<boolean> => {
@@ -50,6 +51,14 @@ export const initializeDetection = async (): Promise<boolean> => {
   }
 };
 
+// Set sensitivity level (1-10)
+export const setSensitivity = (level: number): void => {
+  // Convert 1-10 scale to a multiplier between 0.5 and 2.5
+  // Lower values make detection more sensitive
+  sensitivityMultiplier = 2.5 - ((level - 1) / 9) * 2;
+  console.log(`Detection sensitivity set to ${level} (multiplier: ${sensitivityMultiplier})`);
+};
+
 // Start listening to the microphone
 export const startListening = async (): Promise<boolean> => {
   if (!isInitialized) {
@@ -63,7 +72,13 @@ export const startListening = async (): Promise<boolean> => {
     if (!audioContext) return false;
     
     // Request microphone access
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      } 
+    });
     const source = audioContext.createMediaStreamSource(stream);
     
     // Create analyzer for frequency data
@@ -112,11 +127,14 @@ export const getCurrentBreathingData = (): number[] => {
   
   // Process the raw frequency data to extract breathing pattern
   // Focus on lower frequencies (0-500Hz) where breathing sounds are most present
-  const relevantData = Array.from(dataArray.slice(0, 20));
+  const relevantData = Array.from(dataArray.slice(0, 30)); // Expanded range
   
   // Normalize the values between 0 and 1
   const maxValue = Math.max(...relevantData, 1); // Avoid division by zero
-  const normalizedData = relevantData.map(value => value / maxValue);
+  let normalizedData = relevantData.map(value => value / maxValue);
+  
+  // Apply sensitivity multiplier
+  normalizedData = normalizedData.map(value => Math.min(1, value * sensitivityMultiplier));
   
   return normalizedData;
 };
@@ -138,20 +156,25 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
   // Real implementation would use the audio model for more advanced detection
   
   // Get average amplitude in the relevant frequency range
-  const relevantData = Array.from(dataArray.slice(0, 20));
+  const relevantData = Array.from(dataArray.slice(0, 30)); // Expanded range
   const avgAmplitude = relevantData.reduce((sum, val) => sum + val, 0) / relevantData.length;
   
+  // Apply sensitivity to detection threshold (lower values = more sensitive)
+  const threshold = 8 / sensitivityMultiplier;
+  
   // Detect silence (potential apnea) if amplitude is very low
-  const isSilent = avgAmplitude < 10; // Threshold can be adjusted based on testing
+  const isSilent = avgAmplitude < threshold;
   
   // Check for breathing pattern irregularity
   const pattern = isSilent ? "missing" : "normal";
   
   // Calculate confidence based on how far below threshold
-  const confidence = isSilent ? Math.min(1, (10 - avgAmplitude) / 10) : 0;
+  const confidence = isSilent ? Math.min(1, (threshold - avgAmplitude) / threshold) : 0;
+  
+  console.log(`Audio analysis: avg=${avgAmplitude.toFixed(2)}, threshold=${threshold.toFixed(2)}, silent=${isSilent}, confidence=${confidence.toFixed(2)}`);
   
   return {
-    isApnea: isSilent && confidence > 0.7, // Only flag as apnea if high confidence
+    isApnea: isSilent && confidence > 0.6, // More lenient threshold
     confidence: confidence,
     duration: 0, // Would be tracked over time in a real implementation
     pattern: pattern as "normal" | "interrupted" | "missing"

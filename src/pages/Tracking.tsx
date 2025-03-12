@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle, Calendar } from "lucide-react";
@@ -20,7 +21,8 @@ import {
   stopListening,
   startContinuousDetection,
   AudioAnalysisResult,
-  generateTestApneaEvent
+  generateTestApneaEvent,
+  setSensitivity
 } from "@/utils/apneaDetection";
 
 const Tracking = () => {
@@ -42,6 +44,10 @@ const Tracking = () => {
       setIsTracking(true);
       setCurrentEvents(session.apneaEvents.length);
       
+      // Apply sensitivity settings
+      const settings = getUserSettings();
+      setSensitivity(settings.sensitivity);
+      
       // Try to initialize the detection system
       initializeDetectionSystem();
     } else {
@@ -53,6 +59,9 @@ const Tracking = () => {
   // Check auto schedule on regular intervals
   useEffect(() => {
     const settings = getUserSettings();
+    // Apply sensitivity settings
+    setSensitivity(settings.sensitivity);
+    
     if (settings.detectionMode === "auto") {
       const checkInterval = setInterval(() => {
         checkAutoSchedule();
@@ -109,6 +118,10 @@ const Tracking = () => {
   // Initialize detection system
   const initializeDetectionSystem = async () => {
     try {
+      // Apply current sensitivity settings before initialization
+      const settings = getUserSettings();
+      setSensitivity(settings.sensitivity);
+      
       const initialized = await initializeDetection();
       if (initialized) {
         console.log("Detection system initialized successfully");
