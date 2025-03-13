@@ -21,6 +21,10 @@ const config: CapacitorConfig = {
     KeepAwake: {
       isEnabled: true
     }
+  },
+  android: {
+    // Ensure proper handling of system back button
+    handleBackButton: true
   }
 };
 

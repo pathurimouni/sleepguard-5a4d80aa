@@ -27,6 +27,9 @@ const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => 
     };
     
     checkAuth();
+    
+    // Close menu when route changes
+    setIsOpen(false);
   }, [location.pathname]);
   
   const handleLogout = async () => {
@@ -53,10 +56,17 @@ const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => 
   const MobileNav = () => (
     <>
       <div className="flex items-center justify-between px-4 py-3 bg-background/80 backdrop-blur-sm border-b">
-        <div className="flex items-center">
+        <div 
+          className="flex items-center" 
+          onClick={() => navigate("/")}
+        >
           <h1 className="text-lg font-semibold">{appName}</h1>
         </div>
-        <button onClick={toggleMenu} className="p-1 rounded-md hover:bg-accent">
+        <button 
+          onClick={toggleMenu} 
+          className="p-2 rounded-md hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
+          aria-label="Toggle menu"
+        >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -67,7 +77,7 @@ const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+            className="overflow-hidden absolute w-full bg-background/95 backdrop-blur-sm shadow-lg z-50"
           >
             <div className="px-2 py-3 flex flex-col space-y-1">
               {navItems.map((item) => (
@@ -79,10 +89,10 @@ const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => 
                     closeMenu();
                   }}
                   className={cn(
-                    "flex items-center px-3 py-2 rounded-md text-sm transition-colors",
+                    "flex items-center px-4 py-3 rounded-md text-sm transition-colors",
                     isActive(item.path)
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "hover:bg-accent hover:text-accent-foreground active:bg-accent/80"
                   )}
                 >
                   <span className="mr-3">{item.icon}</span>
@@ -94,7 +104,7 @@ const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => 
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={handleLogout}
-                  className="flex items-center px-3 py-2 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground mt-2 text-red-500"
+                  className="flex items-center px-4 py-3 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground mt-2 text-red-500"
                 >
                   <span className="mr-3"><LogOut size={20} /></span>
                   Logout
@@ -109,7 +119,10 @@ const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => 
 
   const DesktopNav = () => (
     <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-      <div className="flex items-center">
+      <div 
+        className="flex items-center cursor-pointer" 
+        onClick={() => navigate("/")}
+      >
         <h1 className="text-xl font-semibold">{appName}</h1>
       </div>
 
