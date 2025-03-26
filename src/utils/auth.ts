@@ -7,7 +7,13 @@ import { toast } from "sonner";
 const supabaseUrl = "https://nspeqndfwuwpfthesgdx.supabase.co";
 const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5zcGVxbmRmd3V3cGZ0aGVzZ2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE2Mzk0MTUsImV4cCI6MjA1NzIxNTQxNX0.Fc9kZnMqAt5dMRTpnMLjC_TAuloJ3qApDRMuuHENVgI";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: localStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+  }
+});
 
 export interface User {
   id: string;

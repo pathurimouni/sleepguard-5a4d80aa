@@ -52,12 +52,6 @@ const Login = () => {
         toast.error(error);
         setError(error);
       } else if (user) {
-        // Store user info
-        localStorage.setItem("sleepguard-user", JSON.stringify({ 
-          username: user.email,
-          id: user.id 
-        }));
-        
         toast.success("Login successful!");
         navigate("/");
       }
