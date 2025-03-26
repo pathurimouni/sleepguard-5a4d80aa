@@ -8,8 +8,8 @@ interface TimeRangePickerProps {
 }
 
 const TimeRangePicker: React.FC<TimeRangePickerProps> = ({ 
-  startTime, 
-  endTime, 
+  startTime = "22:00", // Default value if undefined
+  endTime = "07:00",   // Default value if undefined
   onChange 
 }) => {
   const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -23,6 +23,13 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
     return <div>Loading settings...</div>;
   }
 
+  // Ensure schedule is initialized with defaults if undefined
+  const schedule = settings.schedule || {
+    startTime: "22:00",
+    endTime: "07:00",
+    weekdays: [true, true, true, true, true, true, true]
+  };
+
   return (
     <div>
       <div className="flex items-center mb-4">
@@ -83,8 +90,8 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
                 <h3 className="font-medium">Schedule</h3>
               </div>
               <TimeRangePicker 
-                startTime={settings.schedule.startTime} 
-                endTime={settings.schedule.endTime}
+                startTime={schedule.startTime} 
+                endTime={schedule.endTime}
                 onChange={handleScheduleChange}
               />
             </div>
@@ -95,7 +102,7 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
                 <h3 className="font-medium">Active Days</h3>
               </div>
               <WeekdaySelector 
-                selectedDays={settings.schedule.weekdays}
+                selectedDays={schedule.weekdays}
                 onChange={handleWeekdayChange}
               />
             </div>
