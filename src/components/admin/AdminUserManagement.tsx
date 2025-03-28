@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { User, Edit, Trash2, CheckCircle, XCircle, Plus, ShieldAlert, Shield, Users } from "lucide-react";
@@ -44,7 +43,7 @@ interface ProfileData {
   updated_at: string | null;
 }
 
-// Define the auth user interface to avoid "never" type issues
+// Modified AuthUser interface to make email optional to match Supabase's User type
 interface AuthUser {
   id: string;
   email: string | null;
@@ -97,8 +96,13 @@ const AdminUserManagement = () => {
         console.error("Error fetching auth users:", authError);
       }
       
-      // Make sure authUsers is always an array even if data is undefined
-      const authUsers: AuthUser[] = data?.users || [];
+      // Convert the users from the Supabase User type to our AuthUser type
+      // and handle the case where data might be undefined
+      const authUsers: AuthUser[] = data?.users.map(user => ({
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at
+      })) || [];
       
       // Ensure profiles is never null/undefined before mapping
       const profilesData = profiles as ProfileData[] || [];
