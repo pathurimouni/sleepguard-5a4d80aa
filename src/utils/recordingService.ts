@@ -6,7 +6,7 @@ export interface BreathingRecording {
   id: string;
   user_id: string;
   recording_file_path: string;
-  recording_date: Date;
+  recording_date: string | Date; // Modified to accept both string and Date
   duration: number;
   analysis_complete: boolean;
 }
@@ -16,9 +16,9 @@ export interface ApneaAnalysis {
   recording_id: string;
   is_apnea: boolean;
   confidence: number;
-  severity: 'none' | 'mild' | 'moderate' | 'severe';
+  severity: 'none' | 'mild' | 'moderate' | 'severe' | string; // Modified to accept any string
   events_per_hour: number;
-  analysis_date: Date;
+  analysis_date: string | Date; // Modified to accept both string and Date
 }
 
 // Upload a breathing recording file
