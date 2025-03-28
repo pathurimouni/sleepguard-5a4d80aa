@@ -13,6 +13,7 @@ import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import BreathingAnalysis from "./pages/BreathingAnalysis";
 import Navbar from "./components/Navbar";
 import { supabase, getCurrentUser, User } from "./utils/auth";
 
@@ -124,6 +125,11 @@ const App = () => {
               <Route path="/tracking" element={
                 <ProtectedRoute>
                   <Tracking />
+                </ProtectedRoute>
+              } />
+              <Route path="/analysis" element={
+                <ProtectedRoute>
+                  <BreathingAnalysis />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={

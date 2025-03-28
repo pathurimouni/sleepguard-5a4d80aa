@@ -9,6 +9,71 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      apnea_analysis: {
+        Row: {
+          analysis_date: string
+          confidence: number
+          events_per_hour: number | null
+          id: string
+          is_apnea: boolean
+          recording_id: string
+          severity: string | null
+        }
+        Insert: {
+          analysis_date?: string
+          confidence: number
+          events_per_hour?: number | null
+          id?: string
+          is_apnea: boolean
+          recording_id: string
+          severity?: string | null
+        }
+        Update: {
+          analysis_date?: string
+          confidence?: number
+          events_per_hour?: number | null
+          id?: string
+          is_apnea?: boolean
+          recording_id?: string
+          severity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "apnea_analysis_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "breathing_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      breathing_recordings: {
+        Row: {
+          analysis_complete: boolean
+          duration: number
+          id: string
+          recording_date: string
+          recording_file_path: string
+          user_id: string
+        }
+        Insert: {
+          analysis_complete?: boolean
+          duration: number
+          id?: string
+          recording_date?: string
+          recording_file_path: string
+          user_id: string
+        }
+        Update: {
+          analysis_complete?: boolean
+          duration?: number
+          id?: string
+          recording_date?: string
+          recording_file_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Home, Moon, Settings, Info, Menu, X, LogOut } from "lucide-react";
+import { Home, Moon, Settings, Info, Menu, X, LogOut, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getCurrentUser, signOut } from "@/utils/auth";
@@ -41,6 +41,7 @@ const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => 
   const navItems = [
     { id: "home", icon: <Home size={20} />, label: "Home", path: "/" },
     { id: "tracking", icon: <Moon size={20} />, label: "Tracking", path: "/tracking" },
+    { id: "analysis", icon: <BarChart2 size={20} />, label: "Analysis", path: "/analysis" },
     { id: "settings", icon: <Settings size={20} />, label: "Settings", path: "/settings" },
     { id: "about", icon: <Info size={20} />, label: "About", path: "/about" },
   ];

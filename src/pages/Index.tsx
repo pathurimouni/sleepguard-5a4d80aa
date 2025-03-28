@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Clock, Moon, Activity, BarChart2 } from "lucide-react";
+import { Clock, Moon, Activity, BarChart2, Stethoscope } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import StatusCard from "@/components/StatusCard";
 import ActionButton from "@/components/ActionButton";
 import { SleepSession, getCurrentSession, getSleepSessions } from "@/utils/storage";
+import { getUserRecordings, getRecordingAnalysis } from "@/utils/recordingService";
+import { getCurrentUser } from "@/utils/auth";
 
 const Index = () => {
   const [recentSessions, setRecentSessions] = useState<SleepSession[]>([]);
@@ -16,6 +18,12 @@ const Index = () => {
     avgDuration: 0,
     avgEvents: 0,
   });
+  const [latestApneaStatus, setLatestApneaStatus] = useState<{
+    hasApnea: boolean;
+    severity: string;
+    eventsPerHour: number;
+  } | null>(null);
+  const [isLoadingApnea, setIsLoadingApnea] = useState(true);
 
   useEffect(() => {
     // Get recent sessions and current session
@@ -37,7 +45,53 @@ const Index = () => {
         avgEvents: Math.round(totalEvents / sessions.length),
       });
     }
+    
+    // Load apnea analysis data
+    loadLatestApneaStatus();
   }, []);
+
+  const loadLatestApneaStatus = async () => {
+    try {
+      setIsLoadingApnea(true);
+      const currentUser = await getCurrentUser();
+      
+      if (!currentUser) {
+        setIsLoadingApnea(false);
+        return;
+      }
+      
+      // Get user recordings
+      const recordings = await getUserRecordings(currentUser.id);
+      
+      if (recordings.length === 0) {
+        setIsLoadingApnea(false);
+        return;
+      }
+      
+      // Get the latest recording with completed analysis
+      const completedRecordings = recordings.filter(r => r.analysis_complete);
+      
+      if (completedRecordings.length === 0) {
+        setIsLoadingApnea(false);
+        return;
+      }
+      
+      const latestRecording = completedRecordings[0];
+      const analysis = await getRecordingAnalysis(latestRecording.id);
+      
+      if (analysis) {
+        setLatestApneaStatus({
+          hasApnea: analysis.is_apnea,
+          severity: analysis.severity,
+          eventsPerHour: analysis.events_per_hour
+        });
+      }
+    } catch (error) {
+      console.error("Error loading apnea status:", error);
+    } finally {
+      setIsLoadingApnea(false);
+    }
+  };
 
   // Format date for display
   const formatDate = (date: Date) => {
@@ -55,6 +109,19 @@ const Index = () => {
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'severe':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100';
+      case 'moderate':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
+      case 'mild':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      default:
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+    }
   };
 
   return (
@@ -79,6 +146,48 @@ const Index = () => {
               Your personal sleep apnea detection assistant
             </motion.p>
           </div>
+
+          {latestApneaStatus && !isLoadingApnea && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="glass-panel p-6 mb-8"
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between">
+                <div>
+                  <div className="flex items-center">
+                    <Stethoscope size={20} className="mr-2 text-primary" />
+                    <h2 className="text-xl font-semibold">Latest Breathing Analysis</h2>
+                  </div>
+                  <p className="text-muted-foreground mt-1 mb-3">
+                    Based on your most recent breathing recording
+                  </p>
+                </div>
+                
+                <div className={`px-4 py-2 rounded-full text-sm font-medium ${getSeverityColor(latestApneaStatus.severity)}`}>
+                  {latestApneaStatus.severity.charAt(0).toUpperCase() + latestApneaStatus.severity.slice(1)}
+                  {' '}
+                  ({latestApneaStatus.eventsPerHour} events/hour)
+                </div>
+              </div>
+              
+              <div className="mt-4 flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-4">
+                <Link to="/analysis" className="flex-1">
+                  <button className="w-full bg-primary text-primary-foreground rounded-md py-2 px-4 text-sm font-medium flex items-center justify-center">
+                    <BarChart2 size={16} className="mr-2" />
+                    View Analysis
+                  </button>
+                </Link>
+                <Link to="/tracking" className="flex-1">
+                  <button className="w-full bg-slate-200 dark:bg-slate-700 rounded-md py-2 px-4 text-sm font-medium flex items-center justify-center">
+                    <Moon size={16} className="mr-2" />
+                    Start Tracking
+                  </button>
+                </Link>
+              </div>
+            </motion.div>
+          )}
 
           {currentSession ? (
             <motion.div 
