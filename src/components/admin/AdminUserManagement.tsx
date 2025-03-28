@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { User, Edit, Trash2, CheckCircle, XCircle, Plus, ShieldAlert, Shield } from "lucide-react";
+import { User, Edit, Trash2, CheckCircle, XCircle, Plus, ShieldAlert, Shield, Users } from "lucide-react";
 import { supabase } from "@/utils/auth";
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
@@ -91,9 +91,9 @@ const AdminUserManagement = () => {
           created_at: authUser?.created_at,
           is_admin: adminIds.includes(profile.id)
         };
-      });
+      }) || [];
       
-      setUsers(combinedUsers || []);
+      setUsers(combinedUsers);
     } catch (error) {
       console.error("Error in user fetch:", error);
       toast.error("Failed to load users");
