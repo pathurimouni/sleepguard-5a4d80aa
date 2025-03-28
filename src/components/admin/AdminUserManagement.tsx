@@ -36,6 +36,14 @@ interface UserProfile {
   is_admin?: boolean;
 }
 
+// Define the profile interface to match Supabase's return type
+interface ProfileData {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+  updated_at: string | null;
+}
+
 const AdminUserManagement = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,16 +90,21 @@ const AdminUserManagement = () => {
         console.error("Error fetching auth users:", authError);
       }
       
+      // Ensure profiles is never null/undefined before mapping
+      const profilesData = profiles as ProfileData[] || [];
+      
       // Combine profile data with auth data and role information
-      const combinedUsers = profiles?.map(profile => {
+      const combinedUsers = profilesData.map(profile => {
         const authUser = authUsers?.find(user => user.id === profile.id);
         return {
-          ...profile,
+          id: profile.id,
+          username: profile.username || '',
+          avatar_url: profile.avatar_url,
           email: authUser?.email || 'Unknown',
           created_at: authUser?.created_at,
           is_admin: adminIds.includes(profile.id)
         };
-      }) || [];
+      });
       
       setUsers(combinedUsers);
     } catch (error) {
