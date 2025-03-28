@@ -44,6 +44,13 @@ interface ProfileData {
   updated_at: string | null;
 }
 
+// Define the auth user interface to avoid "never" type issues
+interface AuthUser {
+  id: string;
+  email: string | null;
+  created_at?: string;
+}
+
 const AdminUserManagement = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,18 +91,21 @@ const AdminUserManagement = () => {
       const adminIds = roles ? roles.map(role => role.user_id) : [];
       
       // Get auth users data to access emails
-      const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
+      const { data, error: authError } = await supabase.auth.admin.listUsers();
       
       if (authError) {
         console.error("Error fetching auth users:", authError);
       }
+      
+      // Make sure authUsers is always an array even if data is undefined
+      const authUsers: AuthUser[] = data?.users || [];
       
       // Ensure profiles is never null/undefined before mapping
       const profilesData = profiles as ProfileData[] || [];
       
       // Combine profile data with auth data and role information
       const combinedUsers = profilesData.map(profile => {
-        const authUser = authUsers?.find(user => user.id === profile.id);
+        const authUser = authUsers.find(user => user.id === profile.id);
         return {
           id: profile.id,
           username: profile.username || '',
