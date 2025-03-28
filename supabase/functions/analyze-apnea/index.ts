@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
@@ -14,6 +13,14 @@ function simulateCNNAnalysis(audioData: number[]): {
   confidence: number; 
   eventsPerHour: number;
   severity: 'none' | 'mild' | 'moderate' | 'severe';
+  modelDetails: {
+    architecture: string;
+    totalParams: number;
+    trainablePramas: number;
+    trainingSamples: number;
+    validationSamples: number;
+    accuracy: number;
+  };
 } {
   // This is a simulation of a CNN model for demonstration
   // In a real implementation, this would use TensorFlow.js or a similar deep learning library
@@ -34,47 +41,88 @@ function simulateCNNAnalysis(audioData: number[]): {
     severity = 'mild';
   }
   
+  // Model details (based on the table in the image)
+  const modelDetails = {
+    architecture: 'Deep Convolutional Neural Network (CNN)',
+    totalParams: 32614,
+    trainablePramas: 32614,
+    trainingSamples: 794,
+    validationSamples: 3178,
+    accuracy: prediction.confidence
+  };
+  
   return {
     isApnea: prediction.eventsPerHour > 5,
     confidence: prediction.confidence,
     eventsPerHour: prediction.eventsPerHour,
-    severity
+    severity,
+    modelDetails
   };
 }
 
-// Simulate feature extraction from audio
+// CNN Feature Extraction Function
+// In a real application, this would implement spectral feature extraction techniques 
+// like Mel-frequency cepstral coefficients (MFCCs) which are commonly used for audio analysis
 function extractAudioFeatures(audioData: number[]): number[] {
-  // In a real implementation, this would perform:
-  // - Spectral analysis (FFT)
-  // - Mel-frequency cepstral coefficients (MFCCs)
-  // - Energy and zero-crossing rates
-  // - etc.
+  console.log("Extracting audio features from recording with length:", audioData.length);
   
-  // For demonstration, we'll return a simple feature vector
+  // In a real implementation, this would perform:
+  // 1. Windowing the audio signal (using Hamming window)
+  // 2. Compute the FFT (Fast Fourier Transform) for spectral analysis
+  // 3. Apply Mel filterbank to get frequency band energies
+  // 4. Take the logarithm of the energies
+  // 5. Apply DCT (Discrete Cosine Transform) to get MFCCs
+  // 6. Keep the first 12-13 coefficients as features
+  
+  // For demonstration, we'll return a simulated feature vector
+  // that would typically be fed into the CNN model
   return audioData.slice(0, 20);
 }
 
-// Simulate CNN prediction
+// CNN Model Prediction Simulation
+// In a real application, this would use a pre-trained deep learning model
+// loaded from a saved model file and would perform actual inference
 function simulateCNNPrediction(features: number[]): { confidence: number; eventsPerHour: number } {
-  // For this demo, we generate a random result
-  // In a real implementation, this would use a pre-trained model
+  console.log("Running CNN prediction with features:", features.length);
   
-  // Generate a random confidence between 0.6 and 0.95
-  const confidence = 0.6 + Math.random() * 0.35;
+  // For this demo, we generate a somewhat realistic result
+  // In a real implementation, this would use an actual CNN model with:
+  // 1. Convolutional layers to extract spatial patterns
+  // 2. Max pooling layers to reduce dimensionality
+  // 3. Fully connected layers for classification
+  // 4. Dropout for regularization
   
-  // Generate a random number of events per hour between 0 and 40
-  const eventsPerHour = Math.floor(Math.random() * 40);
+  // Simulate analysis time to make it seem like real processing is happening
+  // This would be where the actual TensorFlow.js inference would happen
+  
+  // Generate a confidence between 0.75 and 0.95 to simulate realistic model confidence
+  const confidence = 0.75 + Math.random() * 0.20;
+  
+  // Generate a random number of events per hour (more realistic distribution)
+  // Higher probability of lower values with some chance of higher values
+  const baseEvents = Math.floor(Math.random() * 10); // 0-9 base events
+  const severeCases = Math.random() > 0.7 ? Math.floor(Math.random() * 30) : 0; // 30% chance of adding 0-29 more events
+  const eventsPerHour = baseEvents + severeCases;
   
   return { confidence, eventsPerHour };
 }
 
 // Simulate audio decoding from a file
 async function simulateAudioDecoding(fileUrl: string): Promise<number[]> {
-  // In a real implementation, this would download and decode the audio file
-  // For demonstration, we'll generate random audio data
+  console.log("Decoding audio file from URL:", fileUrl);
   
-  // Generate a random array of 1000 values between -1 and 1
-  return Array.from({ length: 1000 }, () => Math.random() * 2 - 1);
+  // In a real implementation, this would:
+  // 1. Download the audio file from storage
+  // 2. Decode the audio into raw PCM samples
+  // 3. Normalize and preprocess the audio data
+  
+  // For demonstration, we'll generate random audio data
+  // Simulate a 30-second audio file at 44.1 kHz (typical for audio analysis)
+  const sampleRate = 44100;
+  const durationSec = 30;
+  const totalSamples = sampleRate * durationSec;
+  
+  return Array.from({ length: totalSamples }, () => Math.random() * 2 - 1);
 }
 
 serve(async (req) => {
@@ -99,6 +147,8 @@ serve(async (req) => {
       );
     }
     
+    console.log(`Starting analysis for recording ID: ${recordingId}`);
+    
     // Get the recording details
     const { data: recording, error: recordingError } = await supabase
       .from('breathing_recordings')
@@ -107,11 +157,14 @@ serve(async (req) => {
       .single();
       
     if (recordingError || !recording) {
+      console.error('Recording not found:', recordingError);
       return new Response(
         JSON.stringify({ error: 'Recording not found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
       );
     }
+    
+    console.log(`Found recording: ${recording.id}, path: ${recording.recording_file_path}`);
     
     // Get the file URL
     const { data: fileData } = await supabase
@@ -120,17 +173,24 @@ serve(async (req) => {
       .createSignedUrl(recording.recording_file_path, 60); // 60 seconds expiry
       
     if (!fileData?.signedUrl) {
+      console.error('Could not access recording file');
       return new Response(
         JSON.stringify({ error: 'Could not access recording file' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
     
+    console.log(`Generated signed URL for file: ${fileData.signedUrl}`);
+    
     // Simulate decoding the audio file
     const audioData = await simulateAudioDecoding(fileData.signedUrl);
     
+    console.log(`Decoded audio data with ${audioData.length} samples`);
+    
     // Perform CNN analysis (simulated)
     const analysis = simulateCNNAnalysis(audioData);
+    
+    console.log(`Analysis complete: isApnea=${analysis.isApnea}, severity=${analysis.severity}, confidence=${analysis.confidence}`);
     
     // Save analysis results to the database
     const { data: analysisData, error: analysisError } = await supabase
@@ -146,17 +206,26 @@ serve(async (req) => {
       .single();
       
     if (analysisError) {
+      console.error('Failed to save analysis results:', analysisError);
       return new Response(
         JSON.stringify({ error: 'Failed to save analysis results' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
     
+    console.log(`Saved analysis results with ID: ${analysisData.id}`);
+    
     // Update the recording to mark analysis as complete
-    await supabase
+    const { error: updateError } = await supabase
       .from('breathing_recordings')
       .update({ analysis_complete: true })
       .eq('id', recordingId);
+      
+    if (updateError) {
+      console.error('Failed to update recording status:', updateError);
+    } else {
+      console.log(`Updated recording ${recordingId} status to analysis_complete=true`);
+    }
     
     return new Response(
       JSON.stringify({ 
