@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle, Calendar } from "lucide-react";
@@ -13,7 +12,8 @@ import {
   endCurrentSession,
   addApneaEvent,
   SleepSession,
-  getUserSettings
+  getUserSettings,
+  defaultSettings
 } from "@/utils/storage";
 import {
   initializeDetection,
@@ -77,8 +77,20 @@ const Tracking = () => {
     
     if (settings.detectionMode !== "auto") return;
     
+    // Ensure settings.schedule exists before accessing properties
+    if (!settings.schedule) {
+      console.error("Schedule settings not found, using defaults");
+      settings.schedule = defaultSettings.schedule;
+    }
+    
     const now = new Date();
     const currentDay = now.getDay(); // 0-6, Sunday to Saturday
+    
+    // Verify weekdays array exists and has the expected length
+    if (!settings.schedule.weekdays || !Array.isArray(settings.schedule.weekdays) || settings.schedule.weekdays.length !== 7) {
+      console.error("Invalid weekdays array, using defaults");
+      settings.schedule.weekdays = defaultSettings.schedule.weekdays;
+    }
     
     // Check if today is a scheduled day
     if (!settings.schedule.weekdays[currentDay]) {
@@ -92,10 +104,14 @@ const Tracking = () => {
     // Parse time strings to compare
     const currentTime = now.getHours() * 60 + now.getMinutes();
     
-    const [startHours, startMinutes] = settings.schedule.startTime.split(':').map(Number);
+    // Validate time strings before splitting
+    const startTimeString = settings.schedule.startTime || defaultSettings.schedule.startTime;
+    const endTimeString = settings.schedule.endTime || defaultSettings.schedule.endTime;
+    
+    const [startHours, startMinutes] = startTimeString.split(':').map(Number);
     const startTimeMinutes = startHours * 60 + startMinutes;
     
-    const [endHours, endMinutes] = settings.schedule.endTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTimeString.split(':').map(Number);
     const endTimeMinutes = endHours * 60 + endMinutes;
     
     // Handle overnight schedules (end time is on the next day)
