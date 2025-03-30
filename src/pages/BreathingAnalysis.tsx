@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Stethoscope, Upload, BarChart2, Loader2 } from 'lucide-react';
+import { Stethoscope, Upload, BarChart2, Loader2, X } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
 import RecordingUploader from '@/components/RecordingUploader';
 import RecordingsList from '@/components/RecordingsList';
 import ApneaResults from '@/components/ApneaResults';
+import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/utils/auth';
 import { 
   getUserRecordings, 
@@ -21,6 +22,7 @@ const BreathingAnalysis = () => {
   const [analysisResult, setAnalysisResult] = useState<ApneaAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+  const [isCanceled, setIsCanceled] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,9 +30,12 @@ const BreathingAnalysis = () => {
   }, []);
 
   useEffect(() => {
+    // Reset cancellation state when selecting a new recording
+    setIsCanceled(false);
+    
     if (selectedRecording && selectedRecording.analysis_complete) {
       loadAnalysisResult(selectedRecording.id);
-    } else if (selectedRecording) {
+    } else if (selectedRecording && !isCanceled) {
       // If analysis is not complete, poll every 5 seconds
       const interval = setInterval(() => {
         checkAnalysisCompletion(selectedRecording.id);
@@ -38,7 +43,7 @@ const BreathingAnalysis = () => {
       
       return () => clearInterval(interval);
     }
-  }, [selectedRecording]);
+  }, [selectedRecording, isCanceled]);
 
   const loadUserRecordings = async () => {
     try {
@@ -68,6 +73,9 @@ const BreathingAnalysis = () => {
 
   const checkAnalysisCompletion = async (recordingId: string) => {
     try {
+      // If canceled, don't check
+      if (isCanceled) return;
+      
       const currentUser = await getCurrentUser();
       
       if (!currentUser) {
@@ -105,10 +113,17 @@ const BreathingAnalysis = () => {
   const handleRecordingSelect = (recording: BreathingRecording) => {
     setSelectedRecording(recording);
     setAnalysisResult(null);
+    setIsCanceled(false);
   };
 
   const handleUploadComplete = () => {
     loadUserRecordings();
+  };
+  
+  const handleCancelAnalysis = () => {
+    setIsCanceled(true);
+    setSelectedRecording(null);
+    toast.info('Analysis monitoring canceled');
   };
 
   return (
@@ -148,9 +163,17 @@ const BreathingAnalysis = () => {
                       <div className="glass-panel p-12 text-center">
                         <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
                         <h3 className="text-xl font-semibold mb-2">Analyzing Recording</h3>
-                        <p className="text-muted-foreground">
+                        <p className="text-muted-foreground mb-6">
                           Our CNN model is analyzing your breathing patterns. This may take a few minutes.
                         </p>
+                        <Button 
+                          variant="destructive" 
+                          onClick={handleCancelAnalysis}
+                          className="flex items-center gap-2"
+                        >
+                          <X size={16} />
+                          Cancel Analysis
+                        </Button>
                       </div>
                     ) : isLoadingAnalysis ? (
                       <div className="glass-panel p-12 text-center">

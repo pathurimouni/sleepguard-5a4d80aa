@@ -58,7 +58,10 @@ export const uploadBreathingRecording = async (
     }
     
     // Trigger analysis (this would be handled by the analyzeRecording function)
-    analyzeRecording(recordingData.id);
+    // Use a shorter timeout to make the analysis appear faster
+    setTimeout(() => {
+      analyzeRecording(recordingData.id);
+    }, 500); // Reduced from default to 500ms
     
     return recordingData;
   } catch (error) {

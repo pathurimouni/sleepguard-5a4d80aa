@@ -1,9 +1,10 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Clock, Activity, CheckCircle } from 'lucide-react';
+import { Upload, Clock, Activity, CheckCircle, X } from 'lucide-react';
 import { getCurrentUser } from '@/utils/auth';
 import { uploadBreathingRecording } from '@/utils/recordingService';
 import { toast } from 'sonner';
+import { Progress } from '@/components/ui/progress';
 
 interface RecordingUploaderProps {
   onUploadComplete: () => void;
@@ -14,8 +15,10 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const progressIntervalRef = useRef<number | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -49,16 +52,19 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
     // Start with 10% immediately to show progress
     setUploadProgress(10);
     
-    // Simulate upload progress
+    // Simulate upload progress at a faster rate
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 90) {
           clearInterval(interval);
           return prev;
         }
-        return prev + 10;
+        return prev + 15; // Increase by 15% each time for faster progress
       });
-    }, 300);
+    }, 200); // Update more frequently (200ms instead of 300ms)
+    
+    // Save the interval ID so we can clear it if canceled
+    progressIntervalRef.current = interval as unknown as number;
     
     return interval;
   };
@@ -93,6 +99,9 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
       clearInterval(progressInterval);
       setUploadProgress(100);
       
+      // Show analyzing state
+      setIsAnalyzing(true);
+      
       // Short delay to show 100% before resetting
       setTimeout(() => {
         if (result) {
@@ -100,12 +109,14 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
           setSelectedFile(null);
           setRecordingDuration(0);
           setUploadProgress(0);
+          setIsAnalyzing(false);
           if (fileInputRef.current) {
             fileInputRef.current.value = '';
           }
           onUploadComplete();
         } else {
           toast.error('Failed to upload recording');
+          setIsAnalyzing(false);
         }
         setIsUploading(false);
       }, 500);
@@ -115,7 +126,23 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
       toast.error('An error occurred during upload');
       setUploadProgress(0);
       setIsUploading(false);
+      setIsAnalyzing(false);
     }
+  };
+
+  const handleCancel = () => {
+    // Clear any progress simulation
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    
+    // Reset states
+    setIsUploading(false);
+    setIsAnalyzing(false);
+    setUploadProgress(0);
+    
+    toast.info('Upload and analysis canceled');
   };
 
   return (
@@ -150,36 +177,53 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
             </div>
             
             {isUploading && (
-              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-2">
-                <div 
-                  className="bg-primary h-2 rounded-full transition-all duration-300" 
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                  <span>{uploadProgress < 100 ? 'Uploading...' : 'Processing...'}</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <Progress value={uploadProgress} className="h-2" />
               </div>
             )}
             
             <div className="flex gap-2">
-              <button
-                className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-md py-2 text-sm"
-                onClick={() => {
-                  setSelectedFile(null);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                  }
-                }}
-                disabled={isUploading}
-              >
-                Change File
-              </button>
-              
-              <button
-                className="flex-1 bg-primary text-primary-foreground rounded-md py-2 text-sm flex items-center justify-center"
-                onClick={handleUpload}
-                disabled={isUploading}
-              >
-                {isUploading ? (
-                  <>
-                    {uploadProgress === 100 ? (
+              {!isUploading && !isAnalyzing ? (
+                <>
+                  <button
+                    className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-md py-2 text-sm"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+                    }}
+                  >
+                    Change File
+                  </button>
+                  
+                  <button
+                    className="flex-1 bg-primary text-primary-foreground rounded-md py-2 text-sm flex items-center justify-center"
+                    onClick={handleUpload}
+                  >
+                    <Upload size={14} className="mr-1" />
+                    <span>Upload</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="flex-1 bg-destructive text-destructive-foreground rounded-md py-2 text-sm flex items-center justify-center"
+                    onClick={handleCancel}
+                  >
+                    <X size={14} className="mr-1" />
+                    <span>Cancel</span>
+                  </button>
+                  
+                  <button
+                    className="flex-1 bg-primary text-primary-foreground rounded-md py-2 text-sm flex items-center justify-center"
+                    disabled
+                  >
+                    {uploadProgress === 100 && isAnalyzing ? (
                       <>
                         <CheckCircle size={14} className="mr-1" />
                         <span>Analyzing...</span>
@@ -187,17 +231,12 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
                     ) : (
                       <>
                         <Activity size={14} className="mr-1 animate-pulse" />
-                        <span>Uploading... {uploadProgress}%</span>
+                        <span>Uploading...</span>
                       </>
                     )}
-                  </>
-                ) : (
-                  <>
-                    <Upload size={14} className="mr-1" />
-                    <span>Upload</span>
-                  </>
-                )}
-              </button>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ) : (
