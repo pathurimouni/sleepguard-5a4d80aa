@@ -20,6 +20,7 @@ export interface User {
   email: string;
   username?: string;
   avatarUrl?: string;
+  isAdmin?: boolean;
 }
 
 export const getCurrentUser = async (): Promise<User | null> => {
@@ -37,6 +38,14 @@ export const getCurrentUser = async (): Promise<User | null> => {
     .select('username, avatar_url')
     .eq('id', user.id)
     .maybeSingle();
+
+  // Check if user has admin role
+  const { data: roles } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'admin')
+    .maybeSingle();
   
   // Update local storage with current user
   const userData = {
@@ -44,6 +53,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
     email: user.email || '',
     username: profile?.username || user.email?.split('@')[0] || '',
     avatarUrl: profile?.avatar_url || '',
+    isAdmin: !!roles,
   };
   
   localStorage.setItem("sleepguard-user", JSON.stringify(userData));
@@ -95,11 +105,20 @@ export const signIn = async (email: string, password: string): Promise<{ user: U
         .eq('id', data.user.id)
         .maybeSingle();
       
+      // Check if user has admin role
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
       const userData = {
         id: data.user.id,
         email: data.user.email || '',
         username: profile?.username || data.user.email?.split('@')[0] || '',
         avatarUrl: profile?.avatar_url || '',
+        isAdmin: !!roles,
       };
       
       // Update local storage

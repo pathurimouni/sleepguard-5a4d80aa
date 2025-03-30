@@ -1,169 +1,237 @@
 
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
-import { Home, Moon, Settings, Info, Menu, X, LogOut, BarChart2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { getCurrentUser, signOut } from "@/utils/auth";
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Moon, Sun, Menu, X, Home, Activity, BarChart2, Settings, Info, LogOut, Shield } from 'lucide-react';
+import { User } from '@/utils/auth';
+import { getCurrentUser, signOut } from '@/utils/auth';
+import { useTheme } from 'next-themes';
+import { motion, AnimatePresence } from 'framer-motion';
+import SleepGuardLogo from './SleepGuardLogo';
 
 interface NavbarProps {
   appName?: string;
+  user?: User;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ appName = "Sleep Apnea Detector" }) => {
-  const navigate = useNavigate();
+const Navbar: React.FC<NavbarProps> = ({ appName = 'SleepGuard' }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const { theme, setTheme } = useTheme();
   const location = useLocation();
-  const isMobile = useIsMobile();
-  const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
   
-  const isActive = (path: string) => location.pathname === path;
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
   
-  useEffect(() => {
-    const checkAuth = async () => {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-    };
-    
-    checkAuth();
-    
-    // Close menu when route changes
-    setIsOpen(false);
-  }, [location.pathname]);
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
   
   const handleLogout = async () => {
     await signOut();
+    setIsAuthenticated(false);
     setUser(null);
-    navigate("/login");
+    navigate('/login');
   };
-
-  const navItems = [
-    { id: "home", icon: <Home size={20} />, label: "Home", path: "/" },
-    { id: "tracking", icon: <Moon size={20} />, label: "Tracking", path: "/tracking" },
-    { id: "analysis", icon: <BarChart2 size={20} />, label: "Analysis", path: "/analysis" },
-    { id: "settings", icon: <Settings size={20} />, label: "Settings", path: "/settings" },
-    { id: "about", icon: <Info size={20} />, label: "About", path: "/about" },
+  
+  // Update auth state when route changes
+  useEffect(() => {
+    const checkAuth = async () => {
+      const userData = await getCurrentUser();
+      setIsAuthenticated(!!userData);
+      setUser(userData);
+    };
+    
+    checkAuth();
+  }, [location.pathname]);
+  
+  // Check if current path is an auth page
+  const isAuthPage = ['/login', '/register', '/admin/login', '/admin/signup'].includes(location.pathname);
+  
+  // Don't show navbar on auth pages
+  if (isAuthPage) {
+    return null;
+  }
+  
+  // Check if current path is an admin page
+  const isAdminPage = location.pathname.startsWith('/admin/');
+  
+  const navLinks = [
+    { to: '/', icon: <Home size={20} />, label: 'Home' },
+    { to: '/tracking', icon: <Activity size={20} />, label: 'Tracking' },
+    { to: '/analysis', icon: <BarChart2 size={20} />, label: 'Analysis' },
+    { to: '/settings', icon: <Settings size={20} />, label: 'Settings' },
+    { to: '/about', icon: <Info size={20} />, label: 'About' },
   ];
-
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const closeMenu = () => {
-    setIsOpen(false);
-  };
-
-  const MobileNav = () => (
-    <>
-      <div className="flex items-center justify-between px-4 py-3 bg-background/80 backdrop-blur-sm border-b">
-        <div 
-          className="flex items-center" 
-          onClick={() => navigate("/")}
-        >
-          <h1 className="text-lg font-semibold">{appName}</h1>
+  
+  const adminNavLinks = [
+    { to: '/admin/dashboard', icon: <Shield size={20} />, label: 'Admin Dashboard' },
+  ];
+  
+  // Use the appropriate nav links based on whether we're on an admin page
+  const displayNavLinks = isAdminPage ? adminNavLinks : navLinks;
+  
+  return (
+    <nav className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-slate-200 dark:border-slate-700">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          {/* Logo and app name */}
+          <div className="flex items-center">
+            <Link to="/" className="flex items-center">
+              <SleepGuardLogo size="sm" withText={true} />
+            </Link>
+          </div>
+          
+          {/* Desktop nav links */}
+          <div className="hidden md:flex space-x-2 items-center">
+            {isAuthenticated && (
+              <>
+                {displayNavLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      location.pathname === link.to
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                  >
+                    <span className="mr-2">{link.icon}</span>
+                    {link.label}
+                  </Link>
+                ))}
+                
+                {/* Show admin dashboard link for admins when not on admin pages */}
+                {!isAdminPage && user?.isAdmin && (
+                  <Link
+                    to="/admin/dashboard"
+                    className="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-amber-500 hover:bg-accent hover:text-amber-600"
+                  >
+                    <Shield size={20} className="mr-2" />
+                    Admin
+                  </Link>
+                )}
+                
+                {/* Show exit admin link when on admin pages */}
+                {isAdminPage && (
+                  <Link
+                    to="/"
+                    className="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-blue-500 hover:bg-accent hover:text-blue-600"
+                  >
+                    <Home size={20} className="mr-2" />
+                    Exit Admin
+                  </Link>
+                )}
+                
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors text-rose-500 hover:bg-accent hover:text-rose-600"
+                >
+                  <LogOut size={20} className="mr-2" />
+                  Logout
+                </button>
+              </>
+            )}
+            
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full hover:bg-accent transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+          </div>
+          
+          {/* Mobile menu button */}
+          <div className="flex items-center md:hidden">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full hover:bg-accent transition-colors mr-2"
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            
+            {isAuthenticated && (
+              <button
+                onClick={toggleMobileMenu}
+                className="p-2 rounded-md hover:bg-accent transition-colors"
+                aria-expanded={isMobileMenuOpen}
+                aria-label="Toggle menu"
+              >
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            )}
+          </div>
         </div>
-        <button 
-          onClick={toggleMenu} 
-          className="p-2 rounded-md hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
-          aria-label="Toggle menu"
-        >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
       </div>
-
+      
+      {/* Mobile menu */}
       <AnimatePresence>
-        {isOpen && (
+        {isMobileMenuOpen && isAuthenticated && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden absolute w-full bg-background/95 backdrop-blur-sm shadow-lg z-50"
+            className="md:hidden overflow-hidden"
           >
-            <div className="px-2 py-3 flex flex-col space-y-1">
-              {navItems.map((item) => (
-                <motion.button
-                  key={item.id}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    navigate(item.path);
-                    closeMenu();
-                  }}
-                  className={cn(
-                    "flex items-center px-4 py-3 rounded-md text-sm transition-colors",
-                    isActive(item.path)
-                      ? "bg-primary text-primary-foreground font-medium"
-                      : "hover:bg-accent hover:text-accent-foreground active:bg-accent/80"
-                  )}
+            <div className="px-2 pt-2 pb-3 space-y-1">
+              {displayNavLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                    location.pathname === link.to
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <span className="mr-3">{item.icon}</span>
-                  {item.label}
-                </motion.button>
+                  <span className="mr-2">{link.icon}</span>
+                  {link.label}
+                </Link>
               ))}
               
-              {user && (
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleLogout}
-                  className="flex items-center px-4 py-3 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground mt-2 text-red-500"
+              {/* Show admin dashboard link for admins when not on admin pages */}
+              {!isAdminPage && user?.isAdmin && (
+                <Link
+                  to="/admin/dashboard"
+                  className="flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors text-amber-500 hover:bg-accent hover:text-amber-600"
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <span className="mr-3"><LogOut size={20} /></span>
-                  Logout
-                </motion.button>
+                  <Shield size={20} className="mr-2" />
+                  Admin Dashboard
+                </Link>
               )}
+              
+              {/* Show exit admin link when on admin pages */}
+              {isAdminPage && (
+                <Link
+                  to="/"
+                  className="flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors text-blue-500 hover:bg-accent hover:text-blue-600"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Home size={20} className="mr-2" />
+                  Exit Admin
+                </Link>
+              )}
+              
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex w-full items-center px-3 py-2 rounded-md text-base font-medium transition-colors text-rose-500 hover:bg-accent hover:text-rose-600"
+              >
+                <LogOut size={20} className="mr-2" />
+                Logout
+              </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </>
-  );
-
-  const DesktopNav = () => (
-    <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-      <div 
-        className="flex items-center cursor-pointer" 
-        onClick={() => navigate("/")}
-      >
-        <h1 className="text-xl font-semibold">{appName}</h1>
-      </div>
-
-      <div className="flex space-x-1">
-        {navItems.map((item) => (
-          <motion.button
-            key={item.id}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate(item.path)}
-            className={cn(
-              "flex items-center px-3 py-2 rounded-md text-sm transition-colors",
-              isActive(item.path)
-                ? "bg-primary text-primary-foreground font-medium"
-                : "hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <span className="mr-2">{item.icon}</span>
-            {item.label}
-          </motion.button>
-        ))}
-        
-        {user && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleLogout}
-            className="flex items-center px-3 py-2 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground text-red-500"
-          >
-            <span className="mr-2"><LogOut size={20} /></span>
-            Logout
-          </motion.button>
-        )}
-      </div>
-    </div>
-  );
-
-  return (
-    <nav className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-sm border-b">
-      {isMobile ? <MobileNav /> : <DesktopNav />}
     </nav>
   );
 };

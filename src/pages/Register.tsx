@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { User, KeyRound, LogIn, Mail } from "lucide-react";
+import { User, KeyRound, LogIn, Mail, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import ActionButton from "@/components/ActionButton";
@@ -176,6 +176,15 @@ const Register = () => {
             
             <div className="text-center text-sm text-muted-foreground">
               <p>Already have an account? <Link to="/login" className="text-primary hover:underline">Sign in</Link></p>
+              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <p className="mb-2 flex items-center justify-center">
+                  <ShieldAlert size={16} className="mr-1 text-amber-500" />
+                  <span>Are you an administrator?</span>
+                </p>
+                <Link to="/admin/signup" className="text-primary hover:underline flex items-center justify-center">
+                  <span>Admin Registration</span>
+                </Link>
+              </div>
             </div>
           </form>
         </motion.div>
