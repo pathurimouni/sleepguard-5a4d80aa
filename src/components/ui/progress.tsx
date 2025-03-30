@@ -20,7 +20,6 @@ const Progress = React.forwardRef<
       className="h-full w-full flex-1 bg-primary transition-all duration-300 relative"
       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
     >
-      {/* Add animated stripes for more dynamic appearance */}
       <div className="absolute inset-0 opacity-20 bg-stripes animate-[move_1s_linear_infinite]"></div>
     </ProgressPrimitive.Indicator>
   </ProgressPrimitive.Root>

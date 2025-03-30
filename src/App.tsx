@@ -185,56 +185,58 @@ const App = () => {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Navbar appName="SleepGuard" />
-          <AnimatePresence mode="wait">
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              } />
-              <Route path="/tracking" element={
-                <ProtectedRoute>
-                  <Tracking />
-                </ProtectedRoute>
-              } />
-              <Route path="/analysis" element={
-                <ProtectedRoute>
-                  <BreathingAnalysis />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              } />
-              <Route path="/about" element={
-                <ProtectedRoute>
-                  <About />
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin/signup" element={<AdminSignup />} />
-              <Route path="/admin/dashboard" element={
-                <AdminRoute>
-                  <AdminDashboard />
-                </AdminRoute>
-              } />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AnimatePresence>
-        </TooltipProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Navbar appName="SleepGuard" />
+            <AnimatePresence mode="wait">
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tracking" element={
+                  <ProtectedRoute>
+                    <Tracking />
+                  </ProtectedRoute>
+                } />
+                <Route path="/analysis" element={
+                  <ProtectedRoute>
+                    <BreathingAnalysis />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/about" element={
+                  <ProtectedRoute>
+                    <About />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/signup" element={<AdminSignup />} />
+                <Route path="/admin/dashboard" element={
+                  <AdminRoute>
+                    <AdminDashboard />
+                  </AdminRoute>
+                } />
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AnimatePresence>
+          </TooltipProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </React.StrictMode>
   );
 };
 
