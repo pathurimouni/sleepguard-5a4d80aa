@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -11,9 +10,10 @@ import PageTransition from "@/components/PageTransition";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/utils/auth";
+import { supabase } from "@/integrations/supabase/client";
 import AdminUserManagement from "@/components/admin/AdminUserManagement";
 import AdminRecordingsView from "@/components/admin/AdminRecordingsView";
+import { fetchAnalyticsData } from "@/utils/adminApi";
 
 interface AdminDashboardProps {
   user?: any;
@@ -115,34 +115,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
 
   const fetchDashboardStats = async () => {
     try {
-      // Get total users count
-      const { count: userCount, error: userError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-      
-      // Get total recordings count
-      const { count: recordingCount, error: recordingError } = await supabase
-        .from('breathing_recordings')
-        .select('*', { count: 'exact', head: true });
-      
-      // Get total apnea detections
-      const { count: apneaCount, error: apneaError } = await supabase
-        .from('apnea_analysis')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_apnea', true);
-      
-      if (userError || recordingError || apneaError) {
-        console.error("Error fetching stats:", userError || recordingError || apneaError);
-        return;
-      }
-      
-      setStats({
-        totalUsers: userCount || 0,
-        totalRecordings: recordingCount || 0,
-        totalApneaDetected: apneaCount || 0,
-      });
+      const data = await fetchAnalyticsData();
+      setStats(data);
     } catch (error) {
       console.error("Stats fetch error:", error);
+      toast.error("Failed to load dashboard statistics");
     }
   };
 
