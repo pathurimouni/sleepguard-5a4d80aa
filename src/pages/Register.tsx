@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import ActionButton from "@/components/ActionButton";
 import { signUp } from "@/utils/auth";
+import SleepGuardLogo from "@/components/SleepGuardLogo";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -63,9 +64,9 @@ const Register = () => {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="mx-auto bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mb-4"
+              className="flex justify-center mb-4"
             >
-              <User size={36} className="text-primary" />
+              <SleepGuardLogo size="lg" />
             </motion.div>
             
             <motion.h1

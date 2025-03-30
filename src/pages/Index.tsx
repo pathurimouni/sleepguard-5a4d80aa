@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -6,6 +5,7 @@ import { Clock, Moon, Activity, BarChart2, Stethoscope } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import StatusCard from "@/components/StatusCard";
 import ActionButton from "@/components/ActionButton";
+import SleepGuardLogo from "@/components/SleepGuardLogo";
 import { SleepSession, getCurrentSession, getSleepSessions } from "@/utils/storage";
 import { getUserRecordings, getRecordingAnalysis } from "@/utils/recordingService";
 import { getCurrentUser } from "@/utils/auth";
@@ -26,7 +26,6 @@ const Index = () => {
   const [isLoadingApnea, setIsLoadingApnea] = useState(true);
 
   useEffect(() => {
-    // Get recent sessions and current session
     const sessions = getSleepSessions().sort(
       (a, b) => b.startTime.getTime() - a.startTime.getTime()
     ).slice(0, 5);
@@ -34,7 +33,6 @@ const Index = () => {
     setRecentSessions(sessions);
     setCurrentSession(getCurrentSession());
     
-    // Calculate stats
     if (sessions.length > 0) {
       const totalDuration = sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
       const totalEvents = sessions.reduce((sum, session) => sum + session.apneaEvents.length, 0);
@@ -46,7 +44,6 @@ const Index = () => {
       });
     }
     
-    // Load apnea analysis data
     loadLatestApneaStatus();
   }, []);
 
@@ -60,7 +57,6 @@ const Index = () => {
         return;
       }
       
-      // Get user recordings
       const recordings = await getUserRecordings(currentUser.id);
       
       if (recordings.length === 0) {
@@ -68,7 +64,6 @@ const Index = () => {
         return;
       }
       
-      // Get the latest recording with completed analysis
       const completedRecordings = recordings.filter(r => r.analysis_complete);
       
       if (completedRecordings.length === 0) {
@@ -93,7 +88,6 @@ const Index = () => {
     }
   };
 
-  // Format date for display
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
@@ -103,7 +97,6 @@ const Index = () => {
     }).format(date);
   };
 
-  // Format duration in minutes to hours and minutes
   const formatDuration = (minutes?: number) => {
     if (!minutes) return 'N/A';
     const hours = Math.floor(minutes / 60);
@@ -129,14 +122,15 @@ const Index = () => {
       <div className="page-container pt-8 md:pt-24 pb-24">
         <div className="page-content">
           <div className="text-center mb-8">
-            <motion.h1 
-              initial={{ opacity: 0, y: -10 }}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-3xl md:text-4xl font-bold mb-2"
+              className="flex justify-center mb-4"
             >
-              SleepGuard
-            </motion.h1>
+              <SleepGuardLogo size="xl" />
+            </motion.div>
+            
             <motion.p 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

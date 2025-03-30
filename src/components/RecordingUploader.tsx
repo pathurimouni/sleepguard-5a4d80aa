@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Clock, Activity } from 'lucide-react';
+import { Upload, Clock, Activity, CheckCircle } from 'lucide-react';
 import { getCurrentUser } from '@/utils/auth';
 import { uploadBreathingRecording } from '@/utils/recordingService';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ interface RecordingUploaderProps {
 
 const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,6 +45,24 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
     }
   };
 
+  const simulateProgress = () => {
+    // Start with 10% immediately to show progress
+    setUploadProgress(10);
+    
+    // Simulate upload progress
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 10;
+      });
+    }, 300);
+    
+    return interval;
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) {
       toast.error('Please select a file to upload');
@@ -53,9 +72,14 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
     try {
       setIsUploading(true);
       
+      // Simulate progress immediately
+      const progressInterval = simulateProgress();
+      
       const currentUser = await getCurrentUser();
       if (!currentUser) {
         toast.error('You must be logged in to upload recordings');
+        clearInterval(progressInterval);
+        setIsUploading(false);
         return;
       }
       
@@ -65,21 +89,31 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
         recordingDuration
       );
       
-      if (result) {
-        toast.success('Recording uploaded successfully');
-        setSelectedFile(null);
-        setRecordingDuration(0);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+      // Finish progress to 100%
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      // Short delay to show 100% before resetting
+      setTimeout(() => {
+        if (result) {
+          toast.success('Recording uploaded successfully');
+          setSelectedFile(null);
+          setRecordingDuration(0);
+          setUploadProgress(0);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+          onUploadComplete();
+        } else {
+          toast.error('Failed to upload recording');
         }
-        onUploadComplete();
-      } else {
-        toast.error('Failed to upload recording');
-      }
+        setIsUploading(false);
+      }, 500);
+      
     } catch (error) {
       console.error('Error uploading recording:', error);
       toast.error('An error occurred during upload');
-    } finally {
+      setUploadProgress(0);
       setIsUploading(false);
     }
   };
@@ -115,6 +149,15 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
               </div>
             </div>
             
+            {isUploading && (
+              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            )}
+            
             <div className="flex gap-2">
               <button
                 className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-md py-2 text-sm"
@@ -124,6 +167,7 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
                     fileInputRef.current.value = '';
                   }
                 }}
+                disabled={isUploading}
               >
                 Change File
               </button>
@@ -135,8 +179,17 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
               >
                 {isUploading ? (
                   <>
-                    <Activity size={14} className="mr-1 animate-pulse" />
-                    <span>Uploading...</span>
+                    {uploadProgress === 100 ? (
+                      <>
+                        <CheckCircle size={14} className="mr-1" />
+                        <span>Analyzing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Activity size={14} className="mr-1 animate-pulse" />
+                        <span>Uploading... {uploadProgress}%</span>
+                      </>
+                    )}
                   </>
                 ) : (
                   <>

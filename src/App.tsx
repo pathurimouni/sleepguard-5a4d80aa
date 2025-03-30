@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -13,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminLogin from "./pages/AdminLogin";
+import AdminSignup from "./pages/AdminSignup";
 import AdminDashboard from "./pages/AdminDashboard";
 import BreathingAnalysis from "./pages/BreathingAnalysis";
 import Navbar from "./components/Navbar";
@@ -220,6 +222,7 @@ const App = () => {
               } />
               
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/signup" element={<AdminSignup />} />
               <Route path="/admin/dashboard" element={
                 <AdminRoute>
                   <AdminDashboard />
