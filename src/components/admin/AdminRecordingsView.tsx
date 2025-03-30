@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 
 interface RecordingData {
   id: string;
@@ -37,6 +38,7 @@ interface RecordingData {
   is_apnea?: boolean;
   confidence?: number;
   severity?: string;
+  events_per_hour?: number;
 }
 
 const AdminRecordingsView = () => {
@@ -48,7 +50,39 @@ const AdminRecordingsView = () => {
 
   useEffect(() => {
     fetchRecordings();
+    setupRealtimeSubscription();
   }, []);
+
+  const setupRealtimeSubscription = () => {
+    // Subscribe to changes in the breathing_recordings table
+    const recordingsChannel = supabase
+      .channel('public:breathing_recordings:realtime')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'breathing_recordings' 
+      }, () => {
+        fetchRecordings();
+      })
+      .subscribe();
+      
+    // Subscribe to analysis changes
+    const analysisChannel = supabase
+      .channel('public:apnea_analysis:realtime')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'apnea_analysis' 
+      }, () => {
+        fetchRecordings();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(recordingsChannel);
+      supabase.removeChannel(analysisChannel);
+    };
+  };
 
   const fetchRecordings = async () => {
     try {
@@ -91,7 +125,8 @@ const AdminRecordingsView = () => {
           username: item.profiles?.username,
           is_apnea: analysis?.is_apnea,
           confidence: analysis?.confidence,
-          severity: analysis?.severity
+          severity: analysis?.severity,
+          events_per_hour: analysis?.events_per_hour
         };
       });
       
@@ -113,7 +148,13 @@ const AdminRecordingsView = () => {
     if (!selectedRecording) return;
     
     try {
-      // Delete the recording
+      // First, delete any analysis results
+      await supabase
+        .from('apnea_analysis')
+        .delete()
+        .eq('recording_id', selectedRecording.id);
+        
+      // Then delete the recording
       const { error } = await supabase
         .from('breathing_recordings')
         .delete()
@@ -123,10 +164,25 @@ const AdminRecordingsView = () => {
         throw error;
       }
       
+      // Attempt to delete the file from storage
+      try {
+        const { error: storageError } = await supabase.storage
+          .from('breathing_recordings')
+          .remove([selectedRecording.recording_file_path]);
+          
+        if (storageError) {
+          console.log("Storage deletion error:", storageError);
+          // Continue even if storage deletion fails
+        }
+      } catch (storageError) {
+        console.log("Storage deletion failed:", storageError);
+      }
+      
       toast.success("Recording deleted successfully");
       setShowDeleteDialog(false);
       setSelectedRecording(null);
-      fetchRecordings();
+      
+      // No need to call fetchRecordings here because the realtime subscription will handle it
     } catch (error) {
       console.error("Error deleting recording:", error);
       toast.error("Failed to delete recording");
@@ -305,7 +361,7 @@ const AdminRecordingsView = () => {
                         Analysis Results
                       </h3>
                       <div className="bg-accent/20 p-3 rounded-md">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <div>
                             <p className="text-sm font-medium">Apnea Detected</p>
                             <div className="mt-1">
@@ -319,12 +375,32 @@ const AdminRecordingsView = () => {
                           
                           <div>
                             <p className="text-sm font-medium">Confidence</p>
-                            <p className="text-lg font-bold">{selectedRecording.confidence ? `${(selectedRecording.confidence * 100).toFixed(1)}%` : 'N/A'}</p>
+                            <p className="text-lg font-bold">
+                              {selectedRecording.confidence ? 
+                                `${(selectedRecording.confidence * 100).toFixed(1)}%` : 
+                                'N/A'}
+                            </p>
+                            {selectedRecording.confidence && (
+                              <div className="mt-1 w-full">
+                                <Progress value={selectedRecording.confidence * 100} className="h-2" />
+                              </div>
+                            )}
                           </div>
                           
                           <div>
                             <p className="text-sm font-medium">Severity</p>
-                            <p className="text-lg font-bold">{selectedRecording.severity || 'N/A'}</p>
+                            <p className="text-lg font-bold">
+                              {selectedRecording.severity || 'N/A'}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <p className="text-sm font-medium">Events Per Hour</p>
+                            <p className="text-lg font-bold">
+                              {selectedRecording.events_per_hour !== undefined ? 
+                                selectedRecording.events_per_hour : 
+                                'N/A'}
+                            </p>
                           </div>
                         </div>
                       </div>

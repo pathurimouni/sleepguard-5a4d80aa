@@ -56,6 +56,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         
         setIsAdmin(true);
         fetchDashboardStats();
+        setupRealtimeSubscription();
       } catch (error) {
         console.error("Admin check error:", error);
         toast.error("Authentication error");
@@ -67,6 +68,50 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
     
     checkAdminStatus();
   }, [navigate]);
+
+  const setupRealtimeSubscription = () => {
+    // Setup realtime subscription for profiles table
+    const profilesChannel = supabase
+      .channel('public:profiles:changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'profiles' 
+      }, () => {
+        fetchDashboardStats();
+      })
+      .subscribe();
+      
+    // Setup subscription for recordings table
+    const recordingsChannel = supabase
+      .channel('public:breathing_recordings:changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'breathing_recordings' 
+      }, () => {
+        fetchDashboardStats();
+      })
+      .subscribe();
+      
+    // Setup subscription for analysis table
+    const analysisChannel = supabase
+      .channel('public:apnea_analysis:changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'apnea_analysis' 
+      }, () => {
+        fetchDashboardStats();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(recordingsChannel);
+      supabase.removeChannel(analysisChannel);
+    };
+  };
 
   const fetchDashboardStats = async () => {
     try {
