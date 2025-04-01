@@ -53,7 +53,7 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
     setUploadProgress(10);
     
     // Simulate upload progress at a faster rate
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 90) {
           clearInterval(interval);

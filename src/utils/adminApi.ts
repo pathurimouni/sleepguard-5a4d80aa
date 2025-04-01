@@ -59,7 +59,7 @@ export async function fetchUserRecordings(userId: string) {
 // Function to fetch analytics data
 export async function fetchAnalyticsData() {
   try {
-    // User count
+    // User count - use count endpoint for accurate count
     const { count: userCount, error: userError } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true });

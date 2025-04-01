@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
-  Users, Database, Activity, Settings, FileText, 
-  BarChart2, Award, LogOut
+  Users, Database, Activity, LogOut,
+  FileText, BarChart2
 } from "lucide-react";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
@@ -216,7 +217,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           transition={{ delay: 0.3 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-3 md:grid-cols-5 mb-6">
+            <TabsList className="grid grid-cols-3 mb-6">
               <TabsTrigger value="overview" className="flex items-center">
                 <BarChart2 size={16} className="mr-2" />
                 Overview
@@ -228,14 +229,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
               <TabsTrigger value="recordings" className="flex items-center">
                 <FileText size={16} className="mr-2" />
                 Recordings
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center">
-                <Award size={16} className="mr-2" />
-                Analytics
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center">
-                <Settings size={16} className="mr-2" />
-                Settings
               </TabsTrigger>
             </TabsList>
             
@@ -272,16 +265,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
                         Browse all user recordings, view analysis results, and manage data.
                       </p>
                     </div>
-                    
-                    <div className="bg-accent/30 p-4 rounded-md">
-                      <h3 className="font-semibold mb-2 flex items-center">
-                        <Award size={16} className="mr-2" />
-                        Analytics & Reports
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Access detailed statistics and generate reports on sleep apnea data.
-                      </p>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -293,38 +276,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
             
             <TabsContent value="recordings">
               <AdminRecordingsView />
-            </TabsContent>
-            
-            <TabsContent value="analytics">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Analytics & Reports</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground mb-4">
-                    This section will provide analytics dashboards and reporting tools.
-                  </p>
-                  <div className="p-4 border border-dashed rounded-md flex items-center justify-center h-60">
-                    <p className="text-muted-foreground">Analytics dashboard coming soon</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="settings">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Admin Settings</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground mb-4">
-                    Configure admin panel settings and preferences.
-                  </p>
-                  <div className="p-4 border border-dashed rounded-md flex items-center justify-center h-60">
-                    <p className="text-muted-foreground">Settings panel coming soon</p>
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
         </motion.div>
