@@ -24,7 +24,7 @@ import {
   generateTestApneaEvent,
   setSensitivity
 } from "@/utils/apneaDetection";
-import { uploadBreathingRecording } from "@/utils/recordingService";
+import { uploadBreathingRecording, uploadLiveRecording } from "@/utils/recordingService";
 import { getCurrentUser } from "@/utils/auth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -41,7 +41,11 @@ const Tracking = () => {
   const [isRecordingUploadable, setIsRecordingUploadable] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [recordingData, setRecordingData] = useState<Blob | null>(null);
-  
+  const [detectedSoundEvents, setDetectedSoundEvents] = useState<Array<{
+    timestamp: number;
+    type: "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal";
+  }>>([]);
+
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
@@ -136,7 +140,10 @@ const Tracking = () => {
             } 
           });
           
-          const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+          const recorder = new MediaRecorder(stream, { 
+            mimeType: 'audio/webm',
+            audioBitsPerSecond: 128000
+          });
           
           recorder.ondataavailable = (e) => {
             if (e.data.size > 0) {
@@ -235,9 +242,36 @@ const Tracking = () => {
   }, [isTracking, detectionMode, mediaRecorder]);
 
   const handleDetectionResult = (result: AudioAnalysisResult) => {
-    if (result.isApnea || result.confidence > 0.55) {
+    if (result.detectedSounds) {
+      const newEvent = {
+        timestamp: Date.now(),
+        type: "normal" as "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal"
+      };
+      
+      if (result.detectedSounds.pausedBreathing) {
+        newEvent.type = "pausedBreathing";
+      } else if (result.detectedSounds.snoring) {
+        newEvent.type = "snoring";
+      } else if (result.detectedSounds.gasping) {
+        newEvent.type = "gasping";
+      } else if (result.detectedSounds.coughing) {
+        newEvent.type = "coughing";
+      }
+      
+      if (newEvent.type !== "normal" || result.confidence > 0.3) {
+        setDetectedSoundEvents(prev => {
+          const newEvents = [...prev, newEvent];
+          if (newEvents.length > 10) {
+            return newEvents.slice(-10);
+          }
+          return newEvents;
+        });
+      }
+    }
+    
+    if (result.isApnea || result.confidence > 0.45) {
       handleApneaEvent(result.pattern === "missing" ? "severe" : "moderate", result.detectedSounds);
-    } else if (result.confidence > 0.25) {
+    } else if (result.confidence > 0.20) {
       setApneaStatus("warning");
       
       if (result.detectedSounds?.snoring || result.detectedSounds?.gasping) {
@@ -339,6 +373,7 @@ const Tracking = () => {
       setIsScheduled(fromSchedule);
       setIsRecordingUploadable(false);
       setRecordingData(null);
+      setDetectedSoundEvents([]);
       
       if (fromSchedule) {
         toast.success("Scheduled sleep tracking started");
@@ -369,6 +404,7 @@ const Tracking = () => {
           setCurrentSession(null);
           setIsTracking(false);
           setIsScheduled(false);
+          setDetectedSoundEvents([]);
           toast.success("Sleep tracking completed and saved");
           navigate("/");
         }
@@ -380,7 +416,7 @@ const Tracking = () => {
   };
 
   const saveRecordingToSupabase = async (session: SleepSession) => {
-    if (!recordingData || session.apneaEvents.length === 0) return;
+    if (!recordingData) return;
     
     try {
       setIsUploading(true);
@@ -392,12 +428,25 @@ const Tracking = () => {
         return;
       }
       
-      const fileName = `sleep-recording-${new Date().toISOString()}.webm`;
-      const file = new File([recordingData], fileName, { type: 'audio/webm' });
-      
       const duration = Math.floor(session.duration || 0);
       
-      const result = await uploadBreathingRecording(user.id, file, duration);
+      let recordingPromise;
+      
+      if (session.apneaEvents.length > 0) {
+        const fileName = `sleep-recording-${new Date().toISOString()}.webm`;
+        const file = new File([recordingData], fileName, { type: 'audio/webm' });
+        recordingPromise = uploadBreathingRecording(user.id, file, duration, (progress) => {
+          console.log(`Upload progress: ${progress}%`);
+        });
+      } else {
+        const fileName = `live-recording-${new Date().toISOString()}.webm`;
+        const file = new File([recordingData], fileName, { type: 'audio/webm' });
+        recordingPromise = uploadLiveRecording(user.id, file, duration, (progress) => {
+          console.log(`Upload progress: ${progress}%`);
+        });
+      }
+      
+      const result = await recordingPromise;
       
       if (result) {
         toast.success("Recording uploaded successfully for analysis");
@@ -485,7 +534,11 @@ const Tracking = () => {
                 </AnimatePresence>
               </div>
 
-              <BreathingVisualizer isTracking={isTracking} status={apneaStatus} />
+              <BreathingVisualizer 
+                isTracking={isTracking} 
+                status={apneaStatus} 
+                detectedEvents={detectedSoundEvents}
+              />
 
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">

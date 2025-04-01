@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/utils/auth';
 import { 
   getUserRecordings, 
-  getRecordingAnalysis, 
+  getRecordingAnalysis,
+  markAnalysisAsCancelled,
   BreathingRecording, 
   ApneaAnalysis 
 } from '@/utils/recordingService';
@@ -74,10 +75,10 @@ const BreathingAnalysis = () => {
       // Simulate analysis progress
       simulateAnalysisProgress();
       
-      // If analysis is not complete, poll every 3 seconds (reduced from 5)
+      // If analysis is not complete, poll every 2 seconds (reduced from 3)
       const interval = setInterval(() => {
         checkAnalysisCompletion(selectedRecording.id);
-      }, 3000);
+      }, 2000);
       
       return () => clearInterval(interval);
     }
@@ -98,7 +99,7 @@ const BreathingAnalysis = () => {
     // Create a new interval for progress simulation
     const interval = setInterval(() => {
       setAnalysisProgress(current => {
-        let newProgress = current + Math.random() * 3;
+        let newProgress = current + Math.random() * 4; // Increased speed from 3 to 4
         
         // Update phase based on progress
         if (newProgress >= 30 && newProgress < 80) {
@@ -110,7 +111,7 @@ const BreathingAnalysis = () => {
         // Cap at 95% until actually complete
         return Math.min(95, newProgress);
       });
-    }, 300);
+    }, 250); // Reduced from 300 to 250ms for faster updates
     
     // Save the interval ID in the ref
     analysisIntervalRef.current = interval;
@@ -132,9 +133,9 @@ const BreathingAnalysis = () => {
       const userRecordings = await getUserRecordings(currentUser.id);
       setRecordings(userRecordings);
       
-      // Don't automatically select the most recent recording
-      // Instead, show the upload panel by default
+      // Always show upload panel by default
       setShowUploadPanel(true);
+      setSelectedRecording(null);
       
     } catch (error) {
       console.error('Error loading recordings:', error);
@@ -186,7 +187,15 @@ const BreathingAnalysis = () => {
     try {
       setIsLoadingAnalysis(true);
       const analysis = await getRecordingAnalysis(recordingId);
-      setAnalysisResult(analysis);
+      
+      if (analysis && analysis.metadata && analysis.metadata.cancelled) {
+        // Handle canceled analysis differently
+        setAnalysisResult(null);
+        setIsCanceled(true);
+        toast.info('This analysis was cancelled');
+      } else {
+        setAnalysisResult(analysis);
+      }
     } catch (error) {
       console.error('Error loading analysis result:', error);
       toast.error('Failed to load analysis result');
@@ -210,11 +219,16 @@ const BreathingAnalysis = () => {
     }
   };
   
-  const handleCancelAnalysis = () => {
+  const handleCancelAnalysis = async () => {
     // Clear the progress simulation interval
     if (analysisIntervalRef.current !== null) {
       clearInterval(analysisIntervalRef.current);
       analysisIntervalRef.current = null;
+    }
+    
+    if (selectedRecording) {
+      // Mark as cancelled in the database
+      await markAnalysisAsCancelled(selectedRecording.id);
     }
     
     setIsCanceled(true);
@@ -244,13 +258,7 @@ const BreathingAnalysis = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-1 space-y-6">
                 {showUploadPanel && (
-                  <RecordingUploader onUploadComplete={(recording) => {
-                    handleUploadComplete();
-                    if (recording) {
-                      setSelectedRecording(recording);
-                      setShowUploadPanel(false);
-                    }
-                  }} />
+                  <RecordingUploader onUploadComplete={handleUploadComplete} />
                 )}
                 
                 <div className="flex justify-between items-center mb-2">
@@ -259,7 +267,10 @@ const BreathingAnalysis = () => {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => setShowUploadPanel(true)}
+                      onClick={() => {
+                        setShowUploadPanel(true);
+                        setSelectedRecording(null);
+                      }}
                       className="flex items-center gap-1"
                     >
                       <Upload size={14} />
@@ -331,6 +342,22 @@ const BreathingAnalysis = () => {
                       <div className="glass-panel p-12 text-center">
                         <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
                         <h3 className="text-xl font-semibold">Loading Results</h3>
+                      </div>
+                    ) : isCanceled ? (
+                      <div className="glass-panel p-12 text-center">
+                        <X className="h-12 w-12 text-red-500/40 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold">Analysis Cancelled</h3>
+                        <p className="text-muted-foreground mt-2">
+                          This analysis was cancelled before completion.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setSelectedRecording(null)}
+                          className="mt-4"
+                        >
+                          Select Another Recording
+                        </Button>
                       </div>
                     ) : analysisResult ? (
                       <ApneaResults analysis={analysisResult} />

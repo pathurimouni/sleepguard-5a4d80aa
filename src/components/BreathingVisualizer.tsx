@@ -1,24 +1,68 @@
-import React, { useState, useEffect } from "react";
+
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Circle } from "lucide-react";
 import { getCurrentBreathingData } from "@/utils/apneaDetection";
 
 interface BreathingVisualizerProps {
   isTracking: boolean;
   status?: "normal" | "warning" | "danger";
+  detectedEvents?: {
+    timestamp: number;
+    type: "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal";
+  }[];
 }
 
 const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   isTracking,
   status = "normal",
+  detectedEvents = []
 }) => {
   const [breathingData, setBreathingData] = useState<number[]>([]);
-  const maxDataPoints = 100;
-  const updateInterval = 50; // ms - reduced further from 75ms to 50ms for even smoother visualization
+  const [eventMarkers, setEventMarkers] = useState<{
+    index: number;
+    type: string;
+    color: string;
+  }[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const maxDataPoints = 120; // Increased for more detailed view
+  const updateInterval = 40; // ms - reduced further for smoother visualization
 
   useEffect(() => {
     if (!isTracking) {
       setBreathingData([]);
+      setEventMarkers([]);
       return;
+    }
+
+    // Update event markers when detected events change
+    if (detectedEvents.length > 0) {
+      const newMarkers = detectedEvents.map((event, idx) => {
+        let color = "rgba(59, 130, 246, 0.8)"; // Default blue
+        
+        switch (event.type) {
+          case "snoring":
+            color = "rgba(245, 158, 11, 0.8)"; // Amber
+            break;
+          case "pausedBreathing":
+            color = "rgba(220, 38, 38, 0.8)"; // Red
+            break;
+          case "gasping":
+            color = "rgba(239, 68, 68, 0.8)"; // Red
+            break;
+          case "coughing":
+            color = "rgba(16, 185, 129, 0.8)"; // Green
+            break;
+        }
+        
+        return {
+          index: Math.max(0, breathingData.length - 5 - idx * 3), // Space out markers
+          type: event.type,
+          color: color
+        };
+      });
+      
+      setEventMarkers(newMarkers);
     }
 
     // Get real breathing data when tracking
@@ -33,7 +77,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             // Take the average of the current audio data with increased sensitivity
             const value = currentData.reduce((sum, val) => sum + val, 0) / currentData.length;
             // Apply amplification factor to make small changes more visible
-            const amplifiedValue = Math.min(1, value * 1.25);
+            const amplifiedValue = Math.min(1, value * 1.5); // Increased amplification
             newData.push(amplifiedValue);
             
             // Keep only the most recent data points
@@ -52,23 +96,23 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             let value = normalPattern;
             if (status === "warning") {
               // Create more noticeable irregularities for warning state
-              value += (Math.random() - 0.5) * 0.5; // Increased from 0.4 to 0.5
+              value += (Math.random() - 0.5) * 0.6; // Increased from 0.5 to 0.6
               // Occasionally add brief pauses (lower values)
-              if (Math.random() < 0.25) { // Increased from 0.2 to 0.25
-                value *= Math.random() * 0.6; // Reduced from 0.7 to 0.6 for more noticeable pauses
+              if (Math.random() < 0.25) {
+                value *= Math.random() * 0.5; // Reduced for more noticeable pauses
               }
             } else if (status === "danger") {
               // More severe irregularities for danger state
-              if (Math.random() < 0.35) { // Increased from 0.3 to 0.35
+              if (Math.random() < 0.4) { // Increased from 0.35 to 0.4
                 // Simulate apnea (near zero breathing)
-                value = Math.random() * 0.15; // Reduced from 0.2 to 0.15 for more extreme lows
+                value = Math.random() * 0.1; // Reduced from 0.15 to 0.1 for more extreme lows
               } else {
                 // Simulate gasping (sharp peaks)
-                value = normalPattern * (1 + Math.random() * 0.9) + (Math.random() - 0.5) * 0.7; // Increased from 0.8/0.6 to 0.9/0.7
+                value = normalPattern * (1 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.8; // Increased variation
               }
             } else {
               // Normal state with minimal noise
-              value += (Math.random() - 0.5) * 0.15; // Increased from 0.1 to 0.15 for more visible fluctuations
+              value += (Math.random() - 0.5) * 0.18; // Increased from 0.15 to 0.18 for more visible fluctuations
             }
             
             // Ensure value stays within bounds
@@ -87,7 +131,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     }, updateInterval);
 
     return () => clearInterval(interval);
-  }, [isTracking, status]);
+  }, [isTracking, status, detectedEvents]);
 
   // Enhanced color based on status with better contrast - avoid black colors
   const getStatusColor = () => {
@@ -113,37 +157,114 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     }
   };
 
+  // Visualize the waveform with a smoother, more professional look
+  const renderWaveform = () => {
+    return (
+      <div className="relative w-full h-full flex items-end p-2">
+        {/* Advanced waveform design for better visualization */}
+        {breathingData.map((value, index) => {
+          // Calculate opacity based on position - more recent points are more visible
+          const opacity = 0.7 + (index / breathingData.length) * 0.3;
+          
+          // Check if there's a detected event at this position
+          const event = eventMarkers.find(marker => marker.index === index);
+          
+          // Determine bar color based on events or status
+          let barColor = getStatusColor();
+          let glowEffect = '';
+          
+          if (event) {
+            barColor = event.color;
+            glowEffect = `shadow-lg shadow-${event.color}`;
+          }
+          
+          return (
+            <div 
+              key={index} 
+              className="relative h-full mx-[1px]"
+              style={{ width: `${100 / maxDataPoints}%`, minWidth: '2px', maxWidth: '6px' }}
+            >
+              <motion.div
+                className="absolute bottom-0 w-full rounded-t-full"
+                style={{
+                  backgroundColor: barColor,
+                  opacity: opacity,
+                  boxShadow: event ? `0 0 8px 2px ${barColor}` : (
+                    status === "danger" ? `0 0 8px 1px ${barColor}` : 
+                    status === "warning" ? `0 0 4px 1px ${barColor}` : 'none'
+                  )
+                }}
+                initial={{ height: 0 }}
+                animate={{ 
+                  height: `${value * 100}%`
+                }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 300, 
+                  damping: 20, 
+                  mass: 0.5 // Adjusted for more responsive motion
+                }}
+              />
+              
+              {/* Add dot markers for detected events */}
+              {event && (
+                <div 
+                  className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 animate-pulse"
+                  title={event.type}
+                >
+                  <Circle 
+                    size={10} 
+                    fill={event.color} 
+                    color="white" 
+                    className="stroke-2" 
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        
+        {/* Add a subtle curve that connects all data points for a smoother appearance */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={getStatusColor()} stopOpacity="0.7" />
+              <stop offset="100%" stopColor={getStatusColor()} stopOpacity="0.1" />
+            </linearGradient>
+          </defs>
+          {breathingData.length > 0 && (
+            <path
+              d={`
+                M 0,${(1 - breathingData[0]) * 100}
+                ${breathingData.map((value, index) => {
+                  const x = (index / (breathingData.length - 1)) * 100;
+                  const y = (1 - value) * 100;
+                  return `L ${x},${y}`;
+                }).join(' ')}
+                L 100,${(1 - breathingData[breathingData.length - 1]) * 100}
+                L 100,100 L 0,100 Z
+              `}
+              fill="url(#gradient)"
+              className="opacity-30"
+            />
+          )}
+        </svg>
+      </div>
+    );
+  };
+
   return (
     <div className={`w-full h-40 md:h-56 rounded-2xl overflow-hidden transition-colors duration-300 ${getBackgroundColor()}`}>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {isTracking ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="w-full h-full flex items-end p-4"
+            className="w-full h-full"
+            ref={containerRef}
           >
-            {breathingData.map((value, index) => (
-              <motion.div
-                key={index}
-                className="h-full w-full max-w-[6px] mx-[1px] rounded-t-full"
-                style={{
-                  backgroundColor: getStatusColor(),
-                  opacity: 0.7 + (index / breathingData.length) * 0.3,
-                }}
-                initial={{ height: 0 }}
-                animate={{ 
-                  height: `${value * 100}%`,
-                  // Add stronger glow effect for better visibility, especially in danger status
-                  boxShadow: status === "danger" 
-                    ? `0 0 12px 2px ${getStatusColor()}` 
-                    : status === "warning" 
-                      ? `0 0 8px 1px ${getStatusColor()}` 
-                      : "none"
-                }}
-                transition={{ type: "spring", stiffness: 350, damping: 25 }}
-              />
-            ))}
+            {renderWaveform()}
           </motion.div>
         ) : (
           <motion.div
