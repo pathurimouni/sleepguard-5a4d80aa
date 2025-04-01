@@ -21,20 +21,30 @@ export interface ApneaAnalysis {
   analysis_date: string | Date; // Modified to accept both string and Date
 }
 
-// Upload a breathing recording file
+// Upload a breathing recording file with real progress tracking
 export const uploadBreathingRecording = async (
   userId: string,
   file: File,
-  duration: number
+  duration: number,
+  onProgress?: (progress: number) => void
 ): Promise<BreathingRecording | null> => {
   try {
     // Create a unique path for the file
     const filePath = `${userId}/${uuidv4()}-${file.name}`;
     
-    // Upload file to storage
+    // Upload file to storage with progress monitoring
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('breathing_recordings')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        onUploadProgress: (progress) => {
+          // Calculate upload percentage
+          const percent = (progress.loaded / progress.total) * 100;
+          // Report progress if callback provided
+          if (onProgress) onProgress(percent);
+        },
+        cacheControl: '3600',
+        upsert: false
+      });
       
     if (uploadError) {
       console.error('Error uploading file:', uploadError);

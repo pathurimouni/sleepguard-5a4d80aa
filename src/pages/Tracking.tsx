@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle, Calendar } from "lucide-react";
@@ -43,11 +42,9 @@ const Tracking = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [recordingData, setRecordingData] = useState<Blob | null>(null);
   
-  // Audio recording variables for actual data storage
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
-  // Check if there's an active session on load
   useEffect(() => {
     const session = getCurrentSession();
     if (session) {
@@ -55,67 +52,50 @@ const Tracking = () => {
       setIsTracking(true);
       setCurrentEvents(session.apneaEvents.length);
       
-      // Apply sensitivity settings
       const settings = getUserSettings();
       setSensitivity(settings.sensitivity);
       
-      // Try to initialize the detection system
       initializeDetectionSystem();
     } else {
-      // Check if auto mode is enabled and should start now
       checkAutoSchedule();
     }
   }, []);
 
-  // Check auto schedule on regular intervals
   useEffect(() => {
     const settings = getUserSettings();
-    // Apply sensitivity settings
     setSensitivity(settings.sensitivity);
     
     if (settings.detectionMode === "auto") {
       const checkInterval = setInterval(() => {
         checkAutoSchedule();
-      }, 60000); // Check every minute
+      }, 60000);
       
       return () => clearInterval(checkInterval);
     }
   }, []);
 
-  // Check if we should start or stop tracking based on schedule
   const checkAutoSchedule = () => {
     const settings = getUserSettings();
     
     if (settings.detectionMode !== "auto") return;
     
-    // Ensure settings.schedule exists before accessing properties
-    if (!settings.schedule) {
-      console.error("Schedule settings not found, using defaults");
+    if (!settings.schedule || !Array.isArray(settings.schedule.weekdays) || settings.schedule.weekdays.length !== 7) {
+      console.error("Invalid weekdays array, using defaults");
       settings.schedule = defaultSettings.schedule;
     }
     
     const now = new Date();
-    const currentDay = now.getDay(); // 0-6, Sunday to Saturday
+    const currentDay = now.getDay();
     
-    // Verify weekdays array exists and has the expected length
-    if (!settings.schedule.weekdays || !Array.isArray(settings.schedule.weekdays) || settings.schedule.weekdays.length !== 7) {
-      console.error("Invalid weekdays array, using defaults");
-      settings.schedule.weekdays = defaultSettings.schedule.weekdays;
-    }
-    
-    // Check if today is a scheduled day
     if (!settings.schedule.weekdays[currentDay]) {
       if (isTracking && isScheduled) {
-        // Stop tracking if it was started by schedule
         stopTracking();
       }
       return;
     }
     
-    // Parse time strings to compare
     const currentTime = now.getHours() * 60 + now.getMinutes();
     
-    // Validate time strings before splitting
     const startTimeString = settings.schedule.startTime || defaultSettings.schedule.startTime;
     const endTimeString = settings.schedule.endTime || defaultSettings.schedule.endTime;
     
@@ -125,27 +105,21 @@ const Tracking = () => {
     const [endHours, endMinutes] = endTimeString.split(':').map(Number);
     const endTimeMinutes = endHours * 60 + endMinutes;
     
-    // Handle overnight schedules (end time is on the next day)
     const isOvernightSchedule = endTimeMinutes < startTimeMinutes;
     
-    // Check if current time is within schedule
     const isWithinSchedule = isOvernightSchedule
       ? (currentTime >= startTimeMinutes || currentTime <= endTimeMinutes)
       : (currentTime >= startTimeMinutes && currentTime <= endTimeMinutes);
     
     if (isWithinSchedule && !isTracking) {
-      // Start tracking if within schedule and not already tracking
       startTracking(true);
     } else if (!isWithinSchedule && isTracking && isScheduled) {
-      // Stop tracking if outside schedule and currently tracking due to schedule
       stopTracking();
     }
   };
 
-  // Initialize detection system
   const initializeDetectionSystem = async () => {
     try {
-      // Apply current sensitivity settings before initialization
       const settings = getUserSettings();
       setSensitivity(settings.sensitivity);
       
@@ -153,7 +127,6 @@ const Tracking = () => {
       if (initialized) {
         console.log("Detection system initialized successfully");
         
-        // Set up audio recording for data storage
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
@@ -172,12 +145,9 @@ const Tracking = () => {
           };
           
           recorder.onstop = () => {
-            // Create a blob from all the chunks
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             setRecordingData(audioBlob);
             setIsRecordingUploadable(true);
-            
-            // Reset chunks for next recording
             setAudioChunks([]);
           };
           
@@ -199,7 +169,6 @@ const Tracking = () => {
     }
   };
 
-  // Update elapsed time for active session
   useEffect(() => {
     if (!isTracking || !currentSession) return;
 
@@ -213,32 +182,26 @@ const Tracking = () => {
     return () => clearInterval(intervalId);
   }, [isTracking, currentSession]);
 
-  // Handle real-time detection when tracking
   useEffect(() => {
     if (!isTracking) return;
 
     const setupRealTimeDetection = async () => {
       try {
-        // Check if we're using real or simulation mode
         if (detectionMode === "real") {
-          // Start listening to the microphone
           const started = await startListening();
           if (started) {
             setMicPermission(true);
             
-            // Start recording for data storage if available
             if (mediaRecorder && mediaRecorder.state !== 'recording') {
               setAudioChunks([]);
-              mediaRecorder.start(1000); // Collect chunks every 1 second
+              mediaRecorder.start(1000);
             }
             
-            // Start the continuous detection
             startContinuousDetection((result) => {
               handleDetectionResult(result);
-            }, 1500); // Check every 1.5 seconds (increased from 2 seconds for better responsiveness)
+            }, 1500);
           } else {
             setMicPermission(false);
-            // Fallback to simulation
             setDetectionMode("simulation");
             toast("Microphone access denied", {
               description: "Falling back to simulation mode",
@@ -246,7 +209,6 @@ const Tracking = () => {
             });
           }
         } else {
-          // Simulation mode
           const simulationInterval = setInterval(() => {
             const result = generateTestApneaEvent();
             handleDetectionResult(result);
@@ -256,18 +218,15 @@ const Tracking = () => {
         }
       } catch (error) {
         console.error("Error in real-time detection:", error);
-        // Fallback to simulation in case of error
         setDetectionMode("simulation");
       }
     };
     
     setupRealTimeDetection();
     
-    // Cleanup
     return () => {
       if (detectionMode === "real") {
         stopListening();
-        // Stop recording if active
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
         }
@@ -275,17 +234,96 @@ const Tracking = () => {
     };
   }, [isTracking, detectionMode, mediaRecorder]);
 
-  // Handle detection results (from real detection or simulation)
   const handleDetectionResult = (result: AudioAnalysisResult) => {
-    // Increased sensitivity: respond to lower confidence values
-    if (result.isApnea || result.confidence > 0.6) {
-      // Definite apnea detected
-      handleApneaEvent(result.pattern === "missing" ? "severe" : "moderate");
-    } else if (result.confidence > 0.3) { // Lowered from 0.5 to 0.3 for increased sensitivity
-      // Potential apnea (warning)
+    if (result.isApnea || result.confidence > 0.55) {
+      handleApneaEvent(result.pattern === "missing" ? "severe" : "moderate", result.detectedSounds);
+    } else if (result.confidence > 0.25) {
       setApneaStatus("warning");
+      
+      if (result.detectedSounds?.snoring || result.detectedSounds?.gasping) {
+        toast.info(
+          <div className="flex flex-col">
+            <span className="font-medium">Abnormal Breathing Sound</span>
+            <span className="text-sm">
+              {result.detectedSounds?.snoring ? 'Snoring detected' : 
+               result.detectedSounds?.gasping ? 'Gasping detected' : 
+               'Unusual breathing pattern'}
+            </span>
+          </div>,
+          { duration: 3000 }
+        );
+      }
+      
       setTimeout(() => setApneaStatus("normal"), 3000);
     }
+  };
+
+  const handleApneaEvent = (severity: "mild" | "moderate" | "severe", detectedSounds?: any) => {
+    setApneaStatus(severity === "mild" ? "warning" : "danger");
+    setCurrentEvents((prev) => prev + 1);
+    
+    if (severity === "moderate" || severity === "severe") {
+      const settings = getUserSettings();
+      
+      let eventMessage = "Abnormal breathing pattern detected";
+      if (detectedSounds) {
+        if (detectedSounds.pausedBreathing) eventMessage = "Breathing pause detected";
+        else if (detectedSounds.gasping) eventMessage = "Gasping detected";
+        else if (detectedSounds.snoring) eventMessage = "Heavy snoring detected";
+        else if (detectedSounds.coughing) eventMessage = "Coughing detected";
+      }
+      
+      toast(
+        <div className="flex flex-col">
+          <span className="font-medium">Apnea Event Detected</span>
+          <span className="text-sm">{eventMessage}</span>
+        </div>,
+        {
+          icon: <AlertTriangle className="text-amber-500" />,
+          duration: 5000,
+          position: "top-center",
+        }
+      );
+      
+      if (navigator.vibrate && settings.alertTypes.vibration) {
+        navigator.vibrate(severity === "severe" ? [200, 100, 200, 100, 200] : [100, 50, 100, 50, 100]);
+      }
+      
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      const oscillator1 = audioContext.createOscillator();
+      oscillator1.type = "sine";
+      oscillator1.frequency.setValueAtTime(severity === "severe" ? 880 : 660, audioContext.currentTime);
+      
+      const oscillator2 = audioContext.createOscillator();
+      oscillator2.type = "triangle";
+      oscillator2.frequency.setValueAtTime(severity === "severe" ? 440 : 330, audioContext.currentTime);
+      
+      const gainNode = audioContext.createGain();
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      
+      oscillator1.connect(gainNode);
+      oscillator2.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator1.start();
+      oscillator2.start();
+      oscillator1.stop(audioContext.currentTime + 0.7);
+      oscillator2.stop(audioContext.currentTime + 0.7);
+    }
+    
+    addApneaEvent({
+      timestamp: new Date(),
+      duration: Math.floor(Math.random() * 10) + 5,
+      type: detectedSounds?.pausedBreathing ? "breathing_pause" : 
+            detectedSounds?.snoring ? "snoring" :
+            detectedSounds?.gasping ? "gasping" : "movement",
+      severity,
+    });
+    
+    setTimeout(() => {
+      setApneaStatus("normal");
+    }, 5000);
   };
 
   const startTracking = async (fromSchedule = false) => {
@@ -316,11 +354,9 @@ const Tracking = () => {
   const stopTracking = () => {
     try {
       if (currentSession) {
-        // Stop real-time detection
         if (detectionMode === "real") {
           stopListening();
           
-          // Stop recording if active
           if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
           }
@@ -343,14 +379,12 @@ const Tracking = () => {
     }
   };
 
-  // Save recording to Supabase
   const saveRecordingToSupabase = async (session: SleepSession) => {
     if (!recordingData || session.apneaEvents.length === 0) return;
     
     try {
       setIsUploading(true);
       
-      // Get current user
       const user = await getCurrentUser();
       if (!user) {
         toast.error("You must be logged in to save recordings");
@@ -358,14 +392,11 @@ const Tracking = () => {
         return;
       }
       
-      // Create a file from the recording blob
       const fileName = `sleep-recording-${new Date().toISOString()}.webm`;
       const file = new File([recordingData], fileName, { type: 'audio/webm' });
       
-      // Duration in seconds
       const duration = Math.floor(session.duration || 0);
       
-      // Upload to Supabase
       const result = await uploadBreathingRecording(user.id, file, duration);
       
       if (result) {
@@ -380,66 +411,6 @@ const Tracking = () => {
     } finally {
       setIsUploading(false);
     }
-  };
-
-  const handleApneaEvent = (severity: "mild" | "moderate" | "severe") => {
-    // Update UI first
-    setApneaStatus(severity === "mild" ? "warning" : "danger");
-    setCurrentEvents((prev) => prev + 1);
-    
-    // Show alert
-    if (severity === "moderate" || severity === "severe") {
-      // Get settings to check which alert types to use
-      const settings = getUserSettings();
-      
-      toast(
-        <div className="flex flex-col">
-          <span className="font-medium">Apnea Event Detected</span>
-          <span className="text-sm">Abnormal breathing pattern detected</span>
-        </div>,
-        {
-          icon: <AlertTriangle className="text-amber-500" />,
-          duration: 5000,
-          position: "top-center",
-        }
-      );
-      
-      // Vibrate if supported and enabled in settings
-      if (navigator.vibrate && settings.alertTypes.vibration) {
-        navigator.vibrate(severity === "severe" ? [200, 100, 200] : [100, 50, 100]);
-      }
-      
-      // Play sound if enabled
-      if (settings.alertTypes.sound) {
-        // Play a beep sound
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        oscillator.type = "sine";
-        oscillator.frequency.setValueAtTime(severity === "severe" ? 880 : 660, audioContext.currentTime);
-        
-        const gainNode = audioContext.createGain();
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.5);
-      }
-    }
-    
-    // Add to storage
-    addApneaEvent({
-      timestamp: new Date(),
-      duration: Math.floor(Math.random() * 10) + 5, // 5-15 seconds
-      type: severity === "severe" ? "breathing_pause" : "movement",
-      severity,
-    });
-    
-    // Reset status after delay
-    setTimeout(() => {
-      setApneaStatus("normal");
-    }, 5000);
   };
 
   const formatElapsedTime = (seconds: number) => {
