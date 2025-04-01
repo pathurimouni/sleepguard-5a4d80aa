@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle, Calendar } from "lucide-react";
@@ -24,6 +25,9 @@ import {
   generateTestApneaEvent,
   setSensitivity
 } from "@/utils/apneaDetection";
+import { uploadBreathingRecording } from "@/utils/recordingService";
+import { getCurrentUser } from "@/utils/auth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Tracking = () => {
   const navigate = useNavigate();
@@ -35,6 +39,13 @@ const Tracking = () => {
   const [detectionMode, setDetectionMode] = useState<"real" | "simulation">("real");
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const [isScheduled, setIsScheduled] = useState(false);
+  const [isRecordingUploadable, setIsRecordingUploadable] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [recordingData, setRecordingData] = useState<Blob | null>(null);
+  
+  // Audio recording variables for actual data storage
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
   // Check if there's an active session on load
   useEffect(() => {
@@ -141,6 +152,39 @@ const Tracking = () => {
       const initialized = await initializeDetection();
       if (initialized) {
         console.log("Detection system initialized successfully");
+        
+        // Set up audio recording for data storage
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            } 
+          });
+          
+          const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+          
+          recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              setAudioChunks((current) => [...current, e.data]);
+            }
+          };
+          
+          recorder.onstop = () => {
+            // Create a blob from all the chunks
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            setRecordingData(audioBlob);
+            setIsRecordingUploadable(true);
+            
+            // Reset chunks for next recording
+            setAudioChunks([]);
+          };
+          
+          setMediaRecorder(recorder);
+        } catch (error) {
+          console.error("Error setting up audio recording:", error);
+        }
       } else {
         console.log("Falling back to simulation mode");
         setDetectionMode("simulation");
@@ -181,10 +225,17 @@ const Tracking = () => {
           const started = await startListening();
           if (started) {
             setMicPermission(true);
+            
+            // Start recording for data storage if available
+            if (mediaRecorder && mediaRecorder.state !== 'recording') {
+              setAudioChunks([]);
+              mediaRecorder.start(1000); // Collect chunks every 1 second
+            }
+            
             // Start the continuous detection
             startContinuousDetection((result) => {
               handleDetectionResult(result);
-            }, 2000); // Check every 2 seconds
+            }, 1500); // Check every 1.5 seconds (increased from 2 seconds for better responsiveness)
           } else {
             setMicPermission(false);
             // Fallback to simulation
@@ -199,7 +250,7 @@ const Tracking = () => {
           const simulationInterval = setInterval(() => {
             const result = generateTestApneaEvent();
             handleDetectionResult(result);
-          }, 2000);
+          }, 1500);
           
           return () => clearInterval(simulationInterval);
         }
@@ -216,16 +267,21 @@ const Tracking = () => {
     return () => {
       if (detectionMode === "real") {
         stopListening();
+        // Stop recording if active
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
       }
     };
-  }, [isTracking, detectionMode]);
+  }, [isTracking, detectionMode, mediaRecorder]);
 
   // Handle detection results (from real detection or simulation)
   const handleDetectionResult = (result: AudioAnalysisResult) => {
-    if (result.isApnea) {
+    // Increased sensitivity: respond to lower confidence values
+    if (result.isApnea || result.confidence > 0.6) {
       // Definite apnea detected
       handleApneaEvent(result.pattern === "missing" ? "severe" : "moderate");
-    } else if (result.confidence > 0.5) {
+    } else if (result.confidence > 0.3) { // Lowered from 0.5 to 0.3 for increased sensitivity
       // Potential apnea (warning)
       setApneaStatus("warning");
       setTimeout(() => setApneaStatus("normal"), 3000);
@@ -243,6 +299,8 @@ const Tracking = () => {
       setCurrentEvents(0);
       setApneaStatus("normal");
       setIsScheduled(fromSchedule);
+      setIsRecordingUploadable(false);
+      setRecordingData(null);
       
       if (fromSchedule) {
         toast.success("Scheduled sleep tracking started");
@@ -261,10 +319,17 @@ const Tracking = () => {
         // Stop real-time detection
         if (detectionMode === "real") {
           stopListening();
+          
+          // Stop recording if active
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
         }
         
         const completedSession = endCurrentSession();
         if (completedSession) {
+          saveRecordingToSupabase(completedSession);
+          
           setCurrentSession(null);
           setIsTracking(false);
           setIsScheduled(false);
@@ -275,6 +340,45 @@ const Tracking = () => {
     } catch (error) {
       console.error("Error stopping tracking:", error);
       toast.error("Failed to stop tracking");
+    }
+  };
+
+  // Save recording to Supabase
+  const saveRecordingToSupabase = async (session: SleepSession) => {
+    if (!recordingData || session.apneaEvents.length === 0) return;
+    
+    try {
+      setIsUploading(true);
+      
+      // Get current user
+      const user = await getCurrentUser();
+      if (!user) {
+        toast.error("You must be logged in to save recordings");
+        setIsUploading(false);
+        return;
+      }
+      
+      // Create a file from the recording blob
+      const fileName = `sleep-recording-${new Date().toISOString()}.webm`;
+      const file = new File([recordingData], fileName, { type: 'audio/webm' });
+      
+      // Duration in seconds
+      const duration = Math.floor(session.duration || 0);
+      
+      // Upload to Supabase
+      const result = await uploadBreathingRecording(user.id, file, duration);
+      
+      if (result) {
+        toast.success("Recording uploaded successfully for analysis");
+        console.log("Recording saved:", result);
+      } else {
+        toast.error("Failed to upload recording");
+      }
+    } catch (error) {
+      console.error("Error saving recording:", error);
+      toast.error("Error saving recording");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -429,6 +533,13 @@ const Tracking = () => {
                   </div>
                 </div>
               </div>
+
+              {isUploading && (
+                <div className="flex justify-center items-center space-x-2 text-xs">
+                  <RefreshCw size={14} className="animate-spin text-primary" />
+                  <span className="text-primary">Saving recording...</span>
+                </div>
+              )}
 
               {isScheduled && (
                 <div className="flex items-center justify-center space-x-2 text-xs text-blue-500">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getCurrentBreathingData } from "@/utils/apneaDetection";
@@ -13,7 +14,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
 }) => {
   const [breathingData, setBreathingData] = useState<number[]>([]);
   const maxDataPoints = 100;
-  const updateInterval = 100; // ms
+  const updateInterval = 75; // ms - reduced from 100ms for smoother visualization
 
   useEffect(() => {
     if (!isTracking) {
@@ -41,19 +42,29 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             return newData;
           });
         } else {
-          // If no data, simulate breathing pattern as fallback
+          // If no data, simulate breathing pattern as fallback with enhanced realism
           setBreathingData((current) => {
             const newData = [...current];
             const normalPattern = Math.sin(Date.now() / 2000) * 0.5 + 0.5;
             
-            // Add some randomness and potential anomalies based on status
+            // Add some randomness and potential anomalies based on status with enhanced realism
             let value = normalPattern;
             if (status === "warning") {
-              // Occasionally add irregularities for warning state
-              value += (Math.random() - 0.5) * 0.3;
+              // Create more noticeable irregularities for warning state
+              value += (Math.random() - 0.5) * 0.4;
+              // Occasionally add brief pauses (lower values)
+              if (Math.random() < 0.2) {
+                value *= Math.random() * 0.7;
+              }
             } else if (status === "danger") {
               // More severe irregularities for danger state
-              value = Math.random() < 0.2 ? 0.1 : normalPattern + (Math.random() - 0.5) * 0.5;
+              if (Math.random() < 0.3) {
+                // Simulate apnea (near zero breathing)
+                value = Math.random() * 0.2;
+              } else {
+                // Simulate gasping (sharp peaks)
+                value = normalPattern * (1 + Math.random() * 0.8) + (Math.random() - 0.5) * 0.6;
+              }
             } else {
               // Normal state with minimal noise
               value += (Math.random() - 0.5) * 0.1;
@@ -77,19 +88,32 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     return () => clearInterval(interval);
   }, [isTracking, status]);
 
+  // Enhanced color based on status with better contrast
   const getStatusColor = () => {
     switch (status) {
       case "warning":
         return "rgb(245, 158, 11)"; // Amber
       case "danger":
-        return "rgb(239, 68, 68)"; // Red
+        return "rgb(220, 38, 38)"; // Increased intensity red
       default:
         return "rgb(59, 130, 246)"; // Blue
     }
   };
 
+  // Background color based on status for better visual indication
+  const getBackgroundColor = () => {
+    switch (status) {
+      case "warning":
+        return "bg-amber-100/30 dark:bg-amber-900/20"; // Light amber background
+      case "danger":
+        return "bg-red-100/30 dark:bg-red-900/20"; // Light red background
+      default:
+        return "bg-secondary/50"; // Default background
+    }
+  };
+
   return (
-    <div className="w-full h-40 md:h-56 bg-secondary/50 rounded-2xl overflow-hidden">
+    <div className={`w-full h-40 md:h-56 rounded-2xl overflow-hidden transition-colors duration-300 ${getBackgroundColor()}`}>
       <AnimatePresence>
         {isTracking ? (
           <motion.div
@@ -107,8 +131,12 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                   opacity: 0.7 + (index / breathingData.length) * 0.3,
                 }}
                 initial={{ height: 0 }}
-                animate={{ height: `${value * 100}%` }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                animate={{ 
+                  height: `${value * 100}%`,
+                  // Add slight glow effect for better visibility, especially in danger status
+                  boxShadow: status === "danger" ? `0 0 8px 1px ${getStatusColor()}` : "none"
+                }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
               />
             ))}
           </motion.div>
