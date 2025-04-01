@@ -49,19 +49,20 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
   };
 
   const simulateProgress = () => {
-    // Start with 10% immediately to show progress
-    setUploadProgress(10);
+    // Start with 5% immediately to show progress has begun
+    setUploadProgress(5);
     
-    // Simulate upload progress at a faster rate
+    // Simulate upload progress at a more realistic rate
     const interval = window.setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 90) {
           clearInterval(interval);
           return prev;
         }
-        return prev + 15; // Increase by 15% each time for faster progress
+        // Use a smaller increment for smoother progression
+        return prev + 8; // Changed from 15% to 8% for smoother progression
       });
-    }, 200); // Update more frequently (200ms instead of 300ms)
+    }, 150); // Update more frequently (150ms instead of 200ms)
     
     // Save the interval ID so we can clear it if canceled
     progressIntervalRef.current = interval as unknown as number;
@@ -119,7 +120,7 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
           setIsAnalyzing(false);
         }
         setIsUploading(false);
-      }, 500);
+      }, 800); // Increased from 500 to 800ms to show the completion state longer
       
     } catch (error) {
       console.error('Error uploading recording:', error);
@@ -182,7 +183,7 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
                   <span>{uploadProgress < 100 ? 'Uploading...' : 'Processing...'}</span>
                   <span>{uploadProgress}%</span>
                 </div>
-                <Progress value={uploadProgress} className="h-2" />
+                <Progress value={uploadProgress} className="h-3 bg-slate-200 dark:bg-slate-700" /> {/* Increased height from h-2 to h-3 */}
               </div>
             )}
             

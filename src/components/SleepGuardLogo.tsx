@@ -35,7 +35,7 @@ const SleepGuardLogo: React.FC<SleepGuardLogoProps> = ({
       {withText && (
         <div className={`ml-3 font-bold ${selectedSize.text}`}>
           <span className="text-primary">Sleep</span>
-          <span>Guard</span>
+          <span className="text-slate-600 dark:text-slate-300">Guard</span> {/* Changed from default text color to slate for light/dark modes */}
         </div>
       )}
     </div>

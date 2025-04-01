@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getCurrentBreathingData } from "@/utils/apneaDetection";
@@ -14,7 +13,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
 }) => {
   const [breathingData, setBreathingData] = useState<number[]>([]);
   const maxDataPoints = 100;
-  const updateInterval = 75; // ms - reduced from 100ms for smoother visualization
+  const updateInterval = 50; // ms - reduced further from 75ms to 50ms for even smoother visualization
 
   useEffect(() => {
     if (!isTracking) {
@@ -31,9 +30,11 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
         if (currentData.length > 0) {
           setBreathingData((prevData) => {
             const newData = [...prevData];
-            // Take the average of the current audio data
+            // Take the average of the current audio data with increased sensitivity
             const value = currentData.reduce((sum, val) => sum + val, 0) / currentData.length;
-            newData.push(value);
+            // Apply amplification factor to make small changes more visible
+            const amplifiedValue = Math.min(1, value * 1.25);
+            newData.push(amplifiedValue);
             
             // Keep only the most recent data points
             if (newData.length > maxDataPoints) {
@@ -47,27 +48,27 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             const newData = [...current];
             const normalPattern = Math.sin(Date.now() / 2000) * 0.5 + 0.5;
             
-            // Add some randomness and potential anomalies based on status with enhanced realism
+            // Add some randomness and potential anomalies based on status with enhanced realism and sensitivity
             let value = normalPattern;
             if (status === "warning") {
               // Create more noticeable irregularities for warning state
-              value += (Math.random() - 0.5) * 0.4;
+              value += (Math.random() - 0.5) * 0.5; // Increased from 0.4 to 0.5
               // Occasionally add brief pauses (lower values)
-              if (Math.random() < 0.2) {
-                value *= Math.random() * 0.7;
+              if (Math.random() < 0.25) { // Increased from 0.2 to 0.25
+                value *= Math.random() * 0.6; // Reduced from 0.7 to 0.6 for more noticeable pauses
               }
             } else if (status === "danger") {
               // More severe irregularities for danger state
-              if (Math.random() < 0.3) {
+              if (Math.random() < 0.35) { // Increased from 0.3 to 0.35
                 // Simulate apnea (near zero breathing)
-                value = Math.random() * 0.2;
+                value = Math.random() * 0.15; // Reduced from 0.2 to 0.15 for more extreme lows
               } else {
                 // Simulate gasping (sharp peaks)
-                value = normalPattern * (1 + Math.random() * 0.8) + (Math.random() - 0.5) * 0.6;
+                value = normalPattern * (1 + Math.random() * 0.9) + (Math.random() - 0.5) * 0.7; // Increased from 0.8/0.6 to 0.9/0.7
               }
             } else {
               // Normal state with minimal noise
-              value += (Math.random() - 0.5) * 0.1;
+              value += (Math.random() - 0.5) * 0.15; // Increased from 0.1 to 0.15 for more visible fluctuations
             }
             
             // Ensure value stays within bounds
@@ -88,7 +89,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     return () => clearInterval(interval);
   }, [isTracking, status]);
 
-  // Enhanced color based on status with better contrast
+  // Enhanced color based on status with better contrast - avoid black colors
   const getStatusColor = () => {
     switch (status) {
       case "warning":
@@ -100,7 +101,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     }
   };
 
-  // Background color based on status for better visual indication
+  // Background color based on status for better visual indication - avoid black colors
   const getBackgroundColor = () => {
     switch (status) {
       case "warning":
@@ -108,7 +109,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
       case "danger":
         return "bg-red-100/30 dark:bg-red-900/20"; // Light red background
       default:
-        return "bg-secondary/50"; // Default background
+        return "bg-blue-100/20 dark:bg-blue-900/10"; // Changed from bg-secondary/50 to blue tints
     }
   };
 
@@ -133,8 +134,12 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                 initial={{ height: 0 }}
                 animate={{ 
                   height: `${value * 100}%`,
-                  // Add slight glow effect for better visibility, especially in danger status
-                  boxShadow: status === "danger" ? `0 0 8px 1px ${getStatusColor()}` : "none"
+                  // Add stronger glow effect for better visibility, especially in danger status
+                  boxShadow: status === "danger" 
+                    ? `0 0 12px 2px ${getStatusColor()}` 
+                    : status === "warning" 
+                      ? `0 0 8px 1px ${getStatusColor()}` 
+                      : "none"
                 }}
                 transition={{ type: "spring", stiffness: 350, damping: 25 }}
               />

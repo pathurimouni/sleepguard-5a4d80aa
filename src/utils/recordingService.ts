@@ -127,3 +127,64 @@ export const analyzeRecording = async (recordingId: string): Promise<void> => {
     console.error('Error in analyzeRecording:', error);
   }
 };
+
+// Get a download URL for a recording
+export const getRecordingDownloadUrl = async (filePath: string): Promise<string | null> => {
+  try {
+    const { data, error } = await supabase.storage
+      .from('breathing_recordings')
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
+      
+    if (error) {
+      console.error('Error creating signed URL:', error);
+      return null;
+    }
+    
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error in getRecordingDownloadUrl:', error);
+    return null;
+  }
+};
+
+// Delete a recording and its analysis
+export const deleteRecording = async (recordingId: string, filePath: string): Promise<boolean> => {
+  try {
+    // First delete the file from storage
+    const { error: storageError } = await supabase.storage
+      .from('breathing_recordings')
+      .remove([filePath]);
+      
+    if (storageError) {
+      console.error('Error deleting storage file:', storageError);
+      // Continue with database deletion even if storage deletion fails
+    }
+    
+    // Delete the analysis record
+    const { error: analysisError } = await supabase
+      .from('apnea_analysis')
+      .delete()
+      .eq('recording_id', recordingId);
+      
+    if (analysisError) {
+      console.error('Error deleting analysis record:', analysisError);
+      // Continue with recording deletion even if analysis deletion fails
+    }
+    
+    // Delete the recording record
+    const { error: recordingError } = await supabase
+      .from('breathing_recordings')
+      .delete()
+      .eq('id', recordingId);
+      
+    if (recordingError) {
+      console.error('Error deleting recording record:', recordingError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in deleteRecording:', error);
+    return false;
+  }
+};
