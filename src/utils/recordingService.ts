@@ -33,18 +33,24 @@ export const uploadBreathingRecording = async (
     const filePath = `${userId}/${uuidv4()}-${file.name}`;
     
     // Upload file to storage with progress monitoring
+    const options: any = {
+      cacheControl: '3600',
+      upsert: false
+    };
+    
+    // Add onUploadProgress callback if provided
+    if (onProgress) {
+      options.onUploadProgress = (progress: { loaded: number; total: number }) => {
+        // Calculate upload percentage
+        const percent = (progress.loaded / progress.total) * 100;
+        // Report progress if callback provided
+        onProgress(percent);
+      };
+    }
+    
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('breathing_recordings')
-      .upload(filePath, file, {
-        onUploadProgress: (progress) => {
-          // Calculate upload percentage
-          const percent = (progress.loaded / progress.total) * 100;
-          // Report progress if callback provided
-          if (onProgress) onProgress(percent);
-        },
-        cacheControl: '3600',
-        upsert: false
-      });
+      .upload(filePath, file, options);
       
     if (uploadError) {
       console.error('Error uploading file:', uploadError);

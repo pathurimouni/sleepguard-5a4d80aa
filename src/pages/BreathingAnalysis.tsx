@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stethoscope, Upload, BarChart2, Loader2, X } from 'lucide-react';
 import PageTransition from '@/components/PageTransition';
@@ -28,6 +28,9 @@ const BreathingAnalysis = () => {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [showUploadPanel, setShowUploadPanel] = useState(true);
   const [analysisPhase, setAnalysisPhase] = useState<'preparing' | 'processing' | 'finalizing' | 'complete'>('preparing');
+  
+  // Use a ref to store the interval ID instead of window property
+  const analysisIntervalRef = useRef<number | null>(null);
   
   // Define analysis phases with descriptions
   const analysisPhasesMap = {
@@ -83,8 +86,9 @@ const BreathingAnalysis = () => {
   // Simulate a realistic analysis progress
   const simulateAnalysisProgress = () => {
     // Clear any existing interval
-    if (window.analysisInterval) {
-      clearInterval(window.analysisInterval);
+    if (analysisIntervalRef.current !== null) {
+      clearInterval(analysisIntervalRef.current);
+      analysisIntervalRef.current = null;
     }
     
     // Start with preparing phase
@@ -108,8 +112,8 @@ const BreathingAnalysis = () => {
       });
     }, 300);
     
-    // Save the interval ID in the window object
-    window.analysisInterval = interval;
+    // Save the interval ID in the ref
+    analysisIntervalRef.current = interval;
     
     return interval;
   };
@@ -161,8 +165,9 @@ const BreathingAnalysis = () => {
         setSelectedRecording(recording);
         
         // Clear the progress simulation interval
-        if (window.analysisInterval) {
-          clearInterval(window.analysisInterval);
+        if (analysisIntervalRef.current !== null) {
+          clearInterval(analysisIntervalRef.current);
+          analysisIntervalRef.current = null;
         }
         
         // Set progress to 100% and phase to complete
@@ -197,14 +202,19 @@ const BreathingAnalysis = () => {
     setIsCanceled(false);
   };
 
-  const handleUploadComplete = () => {
+  const handleUploadComplete = (recording?: BreathingRecording) => {
     loadUserRecordings();
+    if (recording) {
+      setSelectedRecording(recording);
+      setShowUploadPanel(false);
+    }
   };
   
   const handleCancelAnalysis = () => {
     // Clear the progress simulation interval
-    if (window.analysisInterval) {
-      clearInterval(window.analysisInterval);
+    if (analysisIntervalRef.current !== null) {
+      clearInterval(analysisIntervalRef.current);
+      analysisIntervalRef.current = null;
     }
     
     setIsCanceled(true);

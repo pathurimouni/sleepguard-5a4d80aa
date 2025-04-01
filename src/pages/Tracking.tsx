@@ -316,8 +316,8 @@ const Tracking = () => {
       timestamp: new Date(),
       duration: Math.floor(Math.random() * 10) + 5,
       type: detectedSounds?.pausedBreathing ? "breathing_pause" : 
-            detectedSounds?.snoring ? "snoring" :
-            detectedSounds?.gasping ? "gasping" : "movement",
+            detectedSounds?.snoring ? "breathing_pause" : 
+            detectedSounds?.gasping ? "breathing_pause" : "movement",
       severity,
     });
     
