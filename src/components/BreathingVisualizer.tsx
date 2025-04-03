@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Circle } from "lucide-react";
-import { getCurrentBreathingData } from "@/utils/apneaDetection";
+import { Circle, AlertTriangle } from "lucide-react";
+import { getCurrentBreathingData, getRecentDetectionEvents } from "@/utils/apneaDetection";
 
 interface BreathingVisualizerProps {
   isTracking: boolean;
@@ -24,14 +23,16 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     type: string;
     color: string;
   }[]>([]);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const maxDataPoints = 120; // Increased for more detailed view
-  const updateInterval = 40; // ms - reduced further for smoother visualization
+  const maxDataPoints = 150; // Increased for more detailed view
+  const updateInterval = 25; // ms - reduced further for smoother visualization
 
   useEffect(() => {
     if (!isTracking) {
       setBreathingData([]);
       setEventMarkers([]);
+      setAlertMessage(null);
       return;
     }
 
@@ -55,6 +56,17 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             break;
         }
         
+        // Check if this is a severe event to show alert
+        if (event.type === "pausedBreathing" || event.type === "gasping") {
+          setAlertMessage(event.type === "pausedBreathing" ? 
+            "Breathing pause detected!" : 
+            "Gasping detected!"
+          );
+          
+          // Clear alert after a few seconds
+          setTimeout(() => setAlertMessage(null), 5000);
+        }
+        
         return {
           index: Math.max(0, breathingData.length - 5 - idx * 3), // Space out markers
           type: event.type,
@@ -62,7 +74,12 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
         };
       });
       
-      setEventMarkers(newMarkers);
+      setEventMarkers(prevMarkers => {
+        // Combine with existing markers but avoid duplicates
+        const combined = [...prevMarkers, ...newMarkers];
+        // Keep only the most recent 10 markers
+        return combined.slice(-10);
+      });
     }
 
     // Get real breathing data when tracking
@@ -71,13 +88,16 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
         // Get current audio data for visualization
         const currentData = getCurrentBreathingData();
         
+        // Get recent detection events for enhanced visualization
+        const recentEvents = getRecentDetectionEvents();
+        
         if (currentData.length > 0) {
           setBreathingData((prevData) => {
             const newData = [...prevData];
             // Take the average of the current audio data with increased sensitivity
             const value = currentData.reduce((sum, val) => sum + val, 0) / currentData.length;
             // Apply amplification factor to make small changes more visible
-            const amplifiedValue = Math.min(1, value * 1.5); // Increased amplification
+            const amplifiedValue = Math.min(1, value * 2.0); // Increased amplification for better visibility
             newData.push(amplifiedValue);
             
             // Keep only the most recent data points
@@ -86,6 +106,45 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             }
             return newData;
           });
+          
+          // Check for recent events to highlight in the visualization
+          if (recentEvents.length > 0) {
+            const latestEvent = recentEvents[recentEvents.length - 1];
+            
+            // If high confidence apnea event detected, show alert
+            if (latestEvent.confidence > 0.75 && (latestEvent.detectedSounds?.pausedBreathing || latestEvent.isApnea)) {
+              setAlertMessage("Significant breathing irregularity detected!");
+              
+              // Add a marker for this event
+              setEventMarkers(prev => {
+                const newMarker = {
+                  index: Math.max(0, breathingData.length - 3),
+                  type: latestEvent.detectedSounds?.pausedBreathing ? "pausedBreathing" : "apnea",
+                  color: "rgba(220, 38, 38, 0.9)" // Bright red for important events
+                };
+                
+                const updated = [...prev, newMarker];
+                return updated.slice(-10); // Keep only 10 most recent
+              });
+              
+              // Clear alert after 5 seconds
+              setTimeout(() => setAlertMessage(null), 5000);
+            }
+            // If significant snoring detected
+            else if (latestEvent.confidence > 0.5 && latestEvent.detectedSounds?.snoring) {
+              // Add a marker for this event
+              setEventMarkers(prev => {
+                const newMarker = {
+                  index: Math.max(0, breathingData.length - 3),
+                  type: "snoring",
+                  color: "rgba(245, 158, 11, 0.8)" // Amber
+                };
+                
+                const updated = [...prev, newMarker];
+                return updated.slice(-10); // Keep only 10 most recent
+              });
+            }
+          }
         } else {
           // If no data, simulate breathing pattern as fallback with enhanced realism
           setBreathingData((current) => {
@@ -96,23 +155,23 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             let value = normalPattern;
             if (status === "warning") {
               // Create more noticeable irregularities for warning state
-              value += (Math.random() - 0.5) * 0.6; // Increased from 0.5 to 0.6
+              value += (Math.random() - 0.5) * 0.7; // Increased variation
               // Occasionally add brief pauses (lower values)
               if (Math.random() < 0.25) {
-                value *= Math.random() * 0.5; // Reduced for more noticeable pauses
+                value *= Math.random() * 0.4; // Reduced for more noticeable pauses
               }
             } else if (status === "danger") {
               // More severe irregularities for danger state
               if (Math.random() < 0.4) { // Increased from 0.35 to 0.4
                 // Simulate apnea (near zero breathing)
-                value = Math.random() * 0.1; // Reduced from 0.15 to 0.1 for more extreme lows
+                value = Math.random() * 0.08; // Reduced for more extreme lows
               } else {
                 // Simulate gasping (sharp peaks)
-                value = normalPattern * (1 + Math.random() * 1.2) + (Math.random() - 0.5) * 0.8; // Increased variation
+                value = normalPattern * (1 + Math.random() * 1.4) + (Math.random() - 0.5) * 0.9; // Increased variation
               }
             } else {
               // Normal state with minimal noise
-              value += (Math.random() - 0.5) * 0.18; // Increased from 0.15 to 0.18 for more visible fluctuations
+              value += (Math.random() - 0.5) * 0.2; // Increased for more visible fluctuations
             }
             
             // Ensure value stays within bounds
@@ -189,9 +248,9 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                 style={{
                   backgroundColor: barColor,
                   opacity: opacity,
-                  boxShadow: event ? `0 0 8px 2px ${barColor}` : (
-                    status === "danger" ? `0 0 8px 1px ${barColor}` : 
-                    status === "warning" ? `0 0 4px 1px ${barColor}` : 'none'
+                  boxShadow: event ? `0 0 10px 3px ${barColor}` : (
+                    status === "danger" ? `0 0 8px 2px ${barColor}` : 
+                    status === "warning" ? `0 0 6px 1px ${barColor}` : 'none'
                   )
                 }}
                 initial={{ height: 0 }}
@@ -200,9 +259,9 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                 }}
                 transition={{ 
                   type: "spring", 
-                  stiffness: 300, 
-                  damping: 20, 
-                  mass: 0.5 // Adjusted for more responsive motion
+                  stiffness: 350, 
+                  damping: 18, 
+                  mass: 0.4 // Adjusted for more responsive motion
                 }}
               />
               
@@ -213,7 +272,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                   title={event.type}
                 >
                   <Circle 
-                    size={10} 
+                    size={12} 
                     fill={event.color} 
                     color="white" 
                     className="stroke-2" 
@@ -245,10 +304,25 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                 L 100,100 L 0,100 Z
               `}
               fill="url(#gradient)"
-              className="opacity-30"
+              className="opacity-40"
             />
           )}
         </svg>
+        
+        {/* Alert message for significant events */}
+        <AnimatePresence>
+          {alertMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-4 left-0 right-0 mx-auto w-max bg-red-500 text-white px-4 py-2 rounded-lg flex items-center shadow-lg"
+            >
+              <AlertTriangle size={16} className="mr-2" />
+              <span className="text-sm font-semibold">{alertMessage}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };

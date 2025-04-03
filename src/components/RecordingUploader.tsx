@@ -16,9 +16,11 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isCancelled, setIsCancelled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressIntervalRef = useRef<number | null>(null);
+  const uploadControllerRef = useRef<AbortController | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -30,6 +32,7 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
       }
       
       setSelectedFile(file);
+      setIsCancelled(false);
       
       // Create object URL for the audio file
       const objectUrl = URL.createObjectURL(file);
@@ -65,7 +68,7 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
     }, 150); // Update more frequently (150ms instead of 200ms)
     
     // Save the interval ID so we can clear it if canceled
-    progressIntervalRef.current = interval as unknown as number;
+    progressIntervalRef.current = interval;
     
     return interval;
   };
@@ -78,6 +81,10 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
     
     try {
       setIsUploading(true);
+      setIsCancelled(false);
+      
+      // Create AbortController for cancellation
+      uploadControllerRef.current = new AbortController();
       
       // Simulate progress immediately
       const progressInterval = simulateProgress();
@@ -93,11 +100,27 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
       const result = await uploadBreathingRecording(
         currentUser.id,
         selectedFile,
-        recordingDuration
+        recordingDuration,
+        (progress) => {
+          // Use actual progress if available
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
+          }
+          setUploadProgress(progress);
+        }
       );
       
+      // If cancelled during upload, return early
+      if (isCancelled) {
+        return;
+      }
+      
       // Finish progress to 100%
-      clearInterval(progressInterval);
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
       setUploadProgress(100);
       
       // Show analyzing state
@@ -105,6 +128,11 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
       
       // Short delay to show 100% before resetting
       setTimeout(() => {
+        if (isCancelled) {
+          toast.info('Upload cancelled');
+          return;
+        }
+        
         if (result) {
           toast.success('Recording uploaded successfully');
           setSelectedFile(null);
@@ -138,7 +166,14 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
       progressIntervalRef.current = null;
     }
     
+    // Cancel upload request if possible
+    if (uploadControllerRef.current) {
+      uploadControllerRef.current.abort();
+      uploadControllerRef.current = null;
+    }
+    
     // Reset states
+    setIsCancelled(true);
     setIsUploading(false);
     setIsAnalyzing(false);
     setUploadProgress(0);
@@ -183,7 +218,13 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
                   <span>{uploadProgress < 100 ? 'Uploading...' : 'Processing...'}</span>
                   <span>{uploadProgress}%</span>
                 </div>
-                <Progress value={uploadProgress} className="h-3 bg-slate-200 dark:bg-slate-700" /> {/* Increased height from h-2 to h-3 */}
+                <Progress value={uploadProgress} className="h-3 bg-slate-200 dark:bg-slate-700" />
+              </div>
+            )}
+            
+            {isCancelled && (
+              <div className="text-destructive text-sm py-1">
+                Upload cancelled
               </div>
             )}
             
@@ -194,6 +235,7 @@ const RecordingUploader: React.FC<RecordingUploaderProps> = ({ onUploadComplete 
                     className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-md py-2 text-sm"
                     onClick={() => {
                       setSelectedFile(null);
+                      setIsCancelled(false);
                       if (fileInputRef.current) {
                         fileInputRef.current.value = '';
                       }

@@ -248,7 +248,7 @@ export const markAnalysisAsCancelled = async (recordingId: string): Promise<bool
           severity: 'none',
           events_per_hour: 0,
           metadata: { cancelled: true, cancelled_at: new Date().toISOString() }
-        } as any);  // Using type assertion to bypass TypeScript check since we've added metadata to the database
+        });
         
       if (insertError) {
         console.error('Error creating cancelled analysis record:', insertError);
@@ -264,7 +264,7 @@ export const markAnalysisAsCancelled = async (recordingId: string): Promise<bool
         .from('apnea_analysis')
         .update({
           metadata: { cancelled: true, cancelled_at: new Date().toISOString() }
-        } as any)  // Using type assertion to bypass TypeScript check
+        })
         .eq('id', analysis.id);
         
       if (updateError) {
