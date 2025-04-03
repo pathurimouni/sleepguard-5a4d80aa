@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle, Calendar } from "lucide-react";
@@ -132,11 +133,14 @@ const Tracking = () => {
         console.log("Detection system initialized successfully");
         
         try {
+          // Request microphone with explicit permissions and optimal settings
           const stream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
               echoCancellation: false,
               noiseSuppression: false,
-              autoGainControl: false
+              autoGainControl: false,
+              sampleRate: 48000,
+              channelCount: 1
             } 
           });
           
@@ -159,8 +163,11 @@ const Tracking = () => {
           };
           
           setMediaRecorder(recorder);
+          setMicPermission(true);
         } catch (error) {
           console.error("Error setting up audio recording:", error);
+          setMicPermission(false);
+          setDetectionMode("simulation");
         }
       } else {
         console.log("Falling back to simulation mode");
@@ -195,7 +202,19 @@ const Tracking = () => {
     const setupRealTimeDetection = async () => {
       try {
         if (detectionMode === "real") {
-          const started = await startListening();
+          // Try to start listening with retries for improved microphone access
+          let retries = 0;
+          let started = false;
+          
+          while (retries < 3 && !started) {
+            started = await startListening();
+            if (!started) {
+              console.log(`Attempt ${retries + 1} to access microphone failed, retrying...`);
+              await new Promise(resolve => setTimeout(resolve, 500));
+              retries++;
+            }
+          }
+          
           if (started) {
             setMicPermission(true);
             
@@ -206,7 +225,7 @@ const Tracking = () => {
             
             startContinuousDetection((result) => {
               handleDetectionResult(result);
-            }, 1500);
+            }, 1200); // Slightly reduced for more responsive detection
           } else {
             setMicPermission(false);
             setDetectionMode("simulation");
@@ -214,6 +233,14 @@ const Tracking = () => {
               description: "Falling back to simulation mode",
               icon: <AlertTriangle className="h-4 w-4" />,
             });
+            
+            // Start simulation mode since real detection failed
+            const simulationInterval = setInterval(() => {
+              const result = generateTestApneaEvent();
+              handleDetectionResult(result);
+            }, 1500);
+            
+            return () => clearInterval(simulationInterval);
           }
         } else {
           const simulationInterval = setInterval(() => {
@@ -244,17 +271,7 @@ const Tracking = () => {
   const handleDetectionResult = (result: AudioAnalysisResult) => {
     if (result.nonBreathingNoise) {
       setApneaStatus("normal");
-      
-      if (result.message) {
-        toast.info(
-          <div className="flex flex-col">
-            <span className="font-medium">Ambient Noise Detected</span>
-            <span className="text-sm">{result.message}</span>
-          </div>,
-          { duration: 3000 }
-        );
-      }
-      
+      // No toast notification for ambient noise
       return;
     }
     
@@ -285,19 +302,18 @@ const Tracking = () => {
       }
     }
     
-    if (result.isApnea || result.confidence > 0.45) {
+    if (result.isApnea || result.confidence > 0.35) {
       handleApneaEvent(result.pattern === "missing" ? "severe" : "moderate", result.detectedSounds);
     } else if (result.confidence > 0.20) {
       setApneaStatus("warning");
       
-      if (result.detectedSounds?.snoring || result.detectedSounds?.gasping) {
+      // Only show apnea-related alerts, not sound notifications
+      if (result.pattern === "interrupted") {
         toast.info(
           <div className="flex flex-col">
-            <span className="font-medium">Abnormal Breathing Sound</span>
+            <span className="font-medium">Irregular Breathing</span>
             <span className="text-sm">
-              {result.detectedSounds?.snoring ? 'Snoring detected' : 
-               result.detectedSounds?.gasping ? 'Gasping detected' : 
-               'Unusual breathing pattern'}
+              Possible breathing irregularity detected
             </span>
           </div>,
           { duration: 3000 }
@@ -319,8 +335,6 @@ const Tracking = () => {
       if (detectedSounds) {
         if (detectedSounds.pausedBreathing) eventMessage = "Breathing pause detected";
         else if (detectedSounds.gasping) eventMessage = "Gasping detected";
-        else if (detectedSounds.snoring) eventMessage = "Heavy snoring detected";
-        else if (detectedSounds.coughing) eventMessage = "Coughing detected";
       }
       
       toast(
@@ -366,7 +380,6 @@ const Tracking = () => {
       timestamp: new Date(),
       duration: Math.floor(Math.random() * 10) + 5,
       type: detectedSounds?.pausedBreathing ? "breathing_pause" : 
-            detectedSounds?.snoring ? "breathing_pause" : 
             detectedSounds?.gasping ? "breathing_pause" : "movement",
       severity,
     });
@@ -592,9 +605,10 @@ const Tracking = () => {
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
-                  className="text-amber-500 text-sm text-center"
+                  className="text-amber-500 text-sm text-center flex items-center justify-center space-x-2"
                 >
-                  Microphone access denied. Using simulation mode.
+                  <AlertTriangle size={14} />
+                  <span>Microphone access denied. Using simulation mode.</span>
                 </motion.div>
               )}
 
