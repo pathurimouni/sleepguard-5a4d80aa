@@ -91,7 +91,7 @@ export const getRecordingAnalysis = async (recordingId: string): Promise<ApneaAn
       severity: data.severity,
       events_per_hour: data.events_per_hour,
       analysis_date: data.analysis_date,
-      metadata: data.metadata
+      metadata: data.metadata || {}
     };
   } catch (error) {
     console.error('Error in getRecordingAnalysis:', error);
