@@ -1,4 +1,3 @@
-
 import { pipeline } from "@huggingface/transformers";
 
 // Types for audio detection
@@ -15,6 +14,8 @@ export interface AudioAnalysisResult {
   };
   timestamp?: number;
   frequencyData?: number[];
+  nonBreathingNoise?: boolean;
+  message?: string;
 }
 
 // Model and detection settings
@@ -47,6 +48,10 @@ let soundPatterns: { [key: string]: number[] } = {
   coughing: [],
   gasping: [],
 };
+
+// Frequency ranges for different sounds
+const BREATHING_FREQUENCY_RANGE = { min: 40, max: 400 }; // Hz - typical breathing frequency range
+const AMBIENT_NOISE_THRESHOLD = 0.15; // Threshold for detecting non-breathing noise
 
 // Initialize the audio processing pipeline with enhanced configuration
 export const initializeDetection = async (): Promise<boolean> => {
@@ -169,7 +174,7 @@ export const stopListening = (): void => {
   console.log("Stopped listening to microphone");
 };
 
-// Get current breathing data for visualization - optimized for maximum sensitivity
+// Get current breathing data for visualization with enhanced noise detection
 export const getCurrentBreathingData = (): number[] => {
   if (!analyser || !dataArray || !isListening) return [];
   
@@ -180,18 +185,27 @@ export const getCurrentBreathingData = (): number[] => {
   }
   
   // Process the raw frequency data to extract breathing pattern
-  // Focus on frequencies between 10-3000Hz where breathing and related sounds are most present
-  const startBin = Math.floor(10 / (audioContext!.sampleRate / analyser.fftSize));
-  const endBin = Math.floor(3000 / (audioContext!.sampleRate / analyser.fftSize));
+  // Focus on frequencies between BREATHING_FREQUENCY_RANGE where breathing sounds are most present
+  const startBin = Math.floor(BREATHING_FREQUENCY_RANGE.min / (audioContext!.sampleRate / analyser.fftSize));
+  const endBin = Math.floor(BREATHING_FREQUENCY_RANGE.max / (audioContext!.sampleRate / analyser.fftSize));
+  
+  // Check for non-breathing noise in other frequency ranges
+  const nonBreathingStartBin = Math.floor(BREATHING_FREQUENCY_RANGE.max / (audioContext!.sampleRate / analyser.fftSize));
+  const nonBreathingEndBin = Math.floor(3000 / (audioContext!.sampleRate / analyser.fftSize));
   
   // Use typed arrays and limit range for better performance
   const relevantData = Array.from(dataArray.subarray(startBin, endBin));
+  const nonBreathingData = Array.from(dataArray.subarray(nonBreathingStartBin, nonBreathingEndBin));
   
   // Calculate the average amplitude in time domain for transient detection
   let timeAvg = 0;
   if (rawTimeData) {
     timeAvg = rawTimeData.reduce((sum, val) => sum + Math.abs(val), 0) / rawTimeData.length;
   }
+  
+  // Calculate average non-breathing noise
+  const nonBreathingAvg = nonBreathingData.reduce((sum, val) => sum + val, 0) / nonBreathingData.length;
+  const hasNonBreathingNoise = nonBreathingAvg > AMBIENT_NOISE_THRESHOLD * 255;
   
   // Cache the max value to avoid multiple calculations
   const maxValue = Math.max(...relevantData, 1); // Avoid division by zero
@@ -201,18 +215,20 @@ export const getCurrentBreathingData = (): number[] => {
     Math.min(1, (value / maxValue) * sensitivityMultiplier * 1.8)
   );
   
-  // Update the breathing pattern buffer
-  if (breathingPatternBuffer.length >= PATTERN_BUFFER_SIZE) {
-    breathingPatternBuffer.shift();
+  // Update the breathing pattern buffer if no non-breathing noise is detected
+  if (!hasNonBreathingNoise) {
+    if (breathingPatternBuffer.length >= PATTERN_BUFFER_SIZE) {
+      breathingPatternBuffer.shift();
+    }
+    
+    // Add the average of the current data to the pattern buffer
+    const avgValue = processedData.reduce((sum, val) => sum + val, 0) / processedData.length;
+    const enhancedValue = avgValue + (timeAvg * 5); // Add time domain component for better transient detection
+    breathingPatternBuffer.push(Math.min(1, enhancedValue));
+    
+    // Update sound pattern detection
+    updateSoundPatterns(dataArray);
   }
-  
-  // Add the average of the current data to the pattern buffer
-  const avgValue = processedData.reduce((sum, val) => sum + val, 0) / processedData.length;
-  const enhancedValue = avgValue + (timeAvg * 5); // Add time domain component for better transient detection
-  breathingPatternBuffer.push(Math.min(1, enhancedValue));
-  
-  // Update sound pattern detection
-  updateSoundPatterns(dataArray);
   
   return processedData;
 };
@@ -252,7 +268,7 @@ const updateSoundPatterns = (frequencyData: Uint8Array): void => {
   soundPatterns.gasping.push(gaspingAvg);
 };
 
-// Enhanced analysis function with better pattern detection and sound classification
+// Enhanced analysis function with better pattern detection, sound classification, and noise filtering
 export const analyzeCurrentAudio = (): AudioAnalysisResult => {
   if (!analyser || !dataArray || !isListening || breathingPatternBuffer.length < 5) {
     return {
@@ -266,7 +282,8 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
         coughing: false,
         gasping: false,
         pausedBreathing: false
-      }
+      },
+      nonBreathingNoise: false
     };
   }
   
@@ -285,7 +302,8 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
         coughing: false,
         gasping: false,
         pausedBreathing: false
-      }
+      },
+      nonBreathingNoise: false
     };
   }
   
@@ -296,11 +314,21 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
     analyser.getFloatTimeDomainData(rawTimeData);
   }
   
-  // Focus on a much wider range of frequencies for better detection
-  const startBin = Math.floor(10 / (audioContext!.sampleRate / analyser.fftSize)); 
-  const endBin = Math.floor(3000 / (audioContext!.sampleRate / analyser.fftSize));
+  // Focus on breathing frequency range
+  const startBin = Math.floor(BREATHING_FREQUENCY_RANGE.min / (audioContext!.sampleRate / analyser.fftSize)); 
+  const endBin = Math.floor(BREATHING_FREQUENCY_RANGE.max / (audioContext!.sampleRate / analyser.fftSize));
+  
+  // Check for non-breathing noise in other frequency ranges
+  const nonBreathingStartBin = Math.floor(BREATHING_FREQUENCY_RANGE.max / (audioContext!.sampleRate / analyser.fftSize));
+  const nonBreathingEndBin = Math.floor(4000 / (audioContext!.sampleRate / analyser.fftSize));
   
   const relevantData = Array.from(dataArray.subarray(startBin, endBin));
+  const nonBreathingData = Array.from(dataArray.subarray(nonBreathingStartBin, nonBreathingEndBin));
+  
+  // Calculate average non-breathing noise
+  const nonBreathingAvg = nonBreathingData.reduce((sum, val) => sum + val, 0) / nonBreathingData.length;
+  const hasNonBreathingNoise = nonBreathingAvg > AMBIENT_NOISE_THRESHOLD * 255;
+  
   const avgAmplitude = relevantData.reduce((sum, val) => sum + val, 0) / relevantData.length;
   
   // Calculate the average amplitude in time domain for transient detection
@@ -309,7 +337,32 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
     timeAvg = rawTimeData.reduce((sum, val) => sum + Math.abs(val), 0) / rawTimeData.length;
   }
   
-  // Apply enhanced sensitivity to detection threshold
+  // If non-breathing noise is detected, return early with a notification
+  if (hasNonBreathingNoise) {
+    const result: AudioAnalysisResult = {
+      isApnea: false,
+      confidence: 0,
+      duration: 0,
+      pattern: "normal",
+      timestamp: now,
+      detectedSounds: {
+        snoring: false,
+        coughing: false,
+        gasping: false,
+        pausedBreathing: false
+      },
+      nonBreathingNoise: true,
+      message: "Non-breathing noise detected. Please ensure you're in a quiet environment."
+    };
+    
+    // Add to detection events history
+    if (detectionEvents.length >= 10) detectionEvents.shift();
+    detectionEvents.push(result);
+    
+    return result;
+  }
+  
+  // Apply enhanced sensitivity to detection threshold for breathing analysis
   const threshold = DETECTION_THRESHOLD_BASE / sensitivityMultiplier;
   
   // Detect silence (potential apnea) with enhanced detection
@@ -323,10 +376,10 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
     confidence = Math.max(confidence, 0.3);
   }
   
-  // Detect sound patterns
-  const snoring = detectSoundPattern(soundPatterns.snoring, 8); // Reduced threshold from 10 to 8
-  const coughing = detectSoundPattern(soundPatterns.coughing, 10); // Reduced from 12
-  const gasping = detectSoundPattern(soundPatterns.gasping, 12); // Reduced from 15
+  // Detect sound patterns only if no non-breathing noise is detected
+  const snoring = detectSoundPattern(soundPatterns.snoring, 8);
+  const coughing = detectSoundPattern(soundPatterns.coughing, 10);
+  const gasping = detectSoundPattern(soundPatterns.gasping, 12);
   
   // Enhanced pattern detection using the buffer
   // Calculate standard deviation to detect irregular patterns
@@ -336,7 +389,7 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
     const stdDev = Math.sqrt(variance);
     
     // Detect irregular patterns - rapid changes in breathing amplitude
-    const isIrregular = stdDev > 0.08 * sensitivityMultiplier; // Reduced from 0.1 for more sensitivity
+    const isIrregular = stdDev > 0.08 * sensitivityMultiplier;
     
     // Look for extended periods of no variation - indicates potential apnea
     const recentValues = breathingPatternBuffer.slice(-5);
@@ -344,15 +397,15 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
     const recentVariance = recentValues.reduce((sum, val) => sum + Math.pow(val - recentMean, 2), 0) / recentValues.length;
     const recentStdDev = Math.sqrt(recentVariance);
     
-    // Low recent variation with low values indicates potential apnea (even more sensitive)
-    const isFlat = recentStdDev < 0.025 && recentMean < 0.15; // More sensitive detection
+    // Low recent variation with low values indicates potential apnea
+    const isFlat = recentStdDev < 0.025 && recentMean < 0.15;
     
     // Boost confidence if pattern analysis also suggests issues
     if (isIrregular || isFlat) {
-      confidence = Math.max(confidence, 0.65); // Increased for faster detection
+      confidence = Math.max(confidence, 0.65);
       
       if (isFlat && recentMean < 0.12) {
-        confidence = Math.max(confidence, 0.85); // Increased for faster detection
+        confidence = Math.max(confidence, 0.85);
       }
     }
     
@@ -366,7 +419,7 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
   }
   
   // Increase confidence threshold for consecutive anomalies for more reliable detection
-  if (confidence > 0.18) { // Reduced for more sensitivity
+  if (confidence > 0.18) {
     consecutiveAnomalies++;
   } else {
     consecutiveAnomalies = Math.max(0, consecutiveAnomalies - 1);
@@ -374,32 +427,33 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
   
   // Boost confidence if we've detected multiple anomalies in a row
   if (consecutiveAnomalies >= 2) {
-    confidence += 0.35; // Increased for faster detection
+    confidence += 0.35;
   }
   
   // Determine breathing pattern
   let pattern: "normal" | "interrupted" | "missing" = "normal";
   
-  if (confidence > 0.45) { // Reduced for faster detection
+  if (confidence > 0.45) {
     pattern = "missing";
-  } else if (confidence > 0.18) { // Reduced for faster detection
+  } else if (confidence > 0.18) {
     pattern = "interrupted";
   }
   
   // Create the full analysis result with detailed sound detection
   const result: AudioAnalysisResult = {
-    isApnea: confidence > 0.45, // Reduced for faster detection
+    isApnea: confidence > 0.45,
     confidence: confidence,
-    duration: consecutiveAnomalies * (ANALYSIS_THROTTLE_MS / 1000), // Estimated duration based on consecutive anomalies
+    duration: consecutiveAnomalies * (ANALYSIS_THROTTLE_MS / 1000),
     pattern: pattern,
     timestamp: now,
-    frequencyData: relevantData.slice(0, 100), // Include some frequency data for visualization
+    frequencyData: relevantData.slice(0, 100),
     detectedSounds: {
       snoring: snoring,
       coughing: coughing,
       gasping: gasping,
       pausedBreathing: pattern === "missing"
-    }
+    },
+    nonBreathingNoise: false
   };
   
   // Add to detection events history
@@ -457,7 +511,8 @@ export const generateTestApneaEvent = (): AudioAnalysisResult => {
         coughing: false,
         gasping: true,
         pausedBreathing: true
-      }
+      },
+      nonBreathingNoise: false
     };
   } else if (random < 0.3) {
     return {
@@ -471,7 +526,8 @@ export const generateTestApneaEvent = (): AudioAnalysisResult => {
         coughing: random < 0.1,
         gasping: false,
         pausedBreathing: false
-      }
+      },
+      nonBreathingNoise: false
     };
   } else {
     return {
@@ -485,7 +541,8 @@ export const generateTestApneaEvent = (): AudioAnalysisResult => {
         coughing: random > 0.95,
         gasping: false,
         pausedBreathing: false
-      }
+      },
+      nonBreathingNoise: false
     };
   }
 };

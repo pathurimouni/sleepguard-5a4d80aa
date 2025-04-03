@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -242,6 +242,22 @@ const Tracking = () => {
   }, [isTracking, detectionMode, mediaRecorder]);
 
   const handleDetectionResult = (result: AudioAnalysisResult) => {
+    if (result.nonBreathingNoise) {
+      setApneaStatus("normal");
+      
+      if (result.message) {
+        toast.info(
+          <div className="flex flex-col">
+            <span className="font-medium">Ambient Noise Detected</span>
+            <span className="text-sm">{result.message}</span>
+          </div>,
+          { duration: 3000 }
+        );
+      }
+      
+      return;
+    }
+    
     if (result.detectedSounds) {
       const newEvent = {
         timestamp: Date.now(),
