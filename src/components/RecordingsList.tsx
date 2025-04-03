@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { BarChart2, Clock, Calendar, FileAudio } from 'lucide-react';
-import { BreathingRecording, getRecordingAnalysis } from '@/utils/recordingService';
+import { BreathingRecording } from '@/utils/recordingTypes';
 
 interface RecordingsListProps {
   recordings: BreathingRecording[];
