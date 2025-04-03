@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stethoscope, Upload, BarChart2, Loader2, X } from 'lucide-react';
@@ -31,7 +30,7 @@ const BreathingAnalysis = () => {
   const [analysisPhase, setAnalysisPhase] = useState<'preparing' | 'processing' | 'finalizing' | 'complete'>('preparing');
   
   // Use a ref to store the interval ID instead of window property
-  const analysisIntervalRef = useRef<number | null>(null);
+  const analysisIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Define analysis phases with descriptions
   const analysisPhasesMap = {
