@@ -2,6 +2,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { BreathingRecording, ApneaAnalysis } from "./recordingTypes";
 
+// Function to analyze a recording using the Supabase edge function
+export const analyzeRecording = async (recordingId: string): Promise<boolean> => {
+  return triggerRecordingAnalysis(recordingId);
+};
+
 // Function to trigger analysis of a recording using Supabase edge function
 export const triggerRecordingAnalysis = async (recordingId: string): Promise<boolean> => {
   try {
@@ -18,6 +23,44 @@ export const triggerRecordingAnalysis = async (recordingId: string): Promise<boo
     return true;
   } catch (error) {
     console.error('Error in triggerRecordingAnalysis:', error);
+    return false;
+  }
+};
+
+// Function to mark an analysis as cancelled
+export const markAnalysisAsCancelled = async (recordingId: string): Promise<boolean> => {
+  try {
+    // First, update the recording's analysis_complete status
+    const { error: recordingError } = await supabase
+      .from('breathing_recordings')
+      .update({ analysis_complete: true })
+      .eq('id', recordingId);
+      
+    if (recordingError) {
+      console.error('Error updating recording status:', recordingError);
+      return false;
+    }
+    
+    // Then, create a cancelled analysis record
+    const { error: analysisError } = await supabase
+      .from('apnea_analysis')
+      .upsert({
+        recording_id: recordingId,
+        is_apnea: false,
+        confidence: 0,
+        severity: 'none',
+        events_per_hour: 0,
+        metadata: { cancelled: true }
+      });
+      
+    if (analysisError) {
+      console.error('Error creating cancelled analysis:', analysisError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in markAnalysisAsCancelled:', error);
     return false;
   }
 };
