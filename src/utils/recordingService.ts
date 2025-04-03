@@ -22,7 +22,6 @@ export interface ApneaAnalysis {
   metadata?: Record<string, any>;
 }
 
-// Upload a breathing recording file with real progress tracking
 export const uploadBreathingRecording = async (
   userId: string,
   file: File,
@@ -30,21 +29,16 @@ export const uploadBreathingRecording = async (
   onProgress?: (progress: number) => void
 ): Promise<BreathingRecording | null> => {
   try {
-    // Create a unique path for the file
     const filePath = `${userId}/${uuidv4()}-${file.name}`;
     
-    // Upload file to storage with progress monitoring
     const options: any = {
       cacheControl: '3600',
       upsert: false
     };
     
-    // Add onUploadProgress callback if provided
     if (onProgress) {
       options.onUploadProgress = (progress: { loaded: number; total: number }) => {
-        // Calculate upload percentage
         const percent = (progress.loaded / progress.total) * 100;
-        // Report progress if callback provided
         onProgress(percent);
       };
     }
@@ -58,7 +52,6 @@ export const uploadBreathingRecording = async (
       return null;
     }
     
-    // Create a record in the database
     const { data: recordingData, error: recordingError } = await supabase
       .from('breathing_recordings')
       .insert({
@@ -74,11 +67,9 @@ export const uploadBreathingRecording = async (
       return null;
     }
     
-    // Trigger analysis (this would be handled by the analyzeRecording function)
-    // Use a shorter timeout to make the analysis appear faster
     setTimeout(() => {
       analyzeRecording(recordingData.id);
-    }, 500); // Reduced from default to 500ms
+    }, 500);
     
     return recordingData;
   } catch (error) {
@@ -87,7 +78,6 @@ export const uploadBreathingRecording = async (
   }
 };
 
-// Upload a live recording to the new live_recordings bucket
 export const uploadLiveRecording = async (
   userId: string,
   audioBlob: Blob,
@@ -95,21 +85,17 @@ export const uploadLiveRecording = async (
   onProgress?: (progress: number) => void
 ): Promise<BreathingRecording | null> => {
   try {
-    // Create a unique filename with timestamp
     const timestamp = new Date().toISOString();
     const filename = `live-recording-${timestamp}.webm`;
     const filePath = `${userId}/${filename}`;
     
-    // Create a File object from the Blob
     const file = new File([audioBlob], filename, { type: 'audio/webm' });
     
-    // Upload options
     const options: any = {
       cacheControl: '3600',
       upsert: false
     };
     
-    // Add progress callback if provided
     if (onProgress) {
       options.onUploadProgress = (progress: { loaded: number; total: number }) => {
         const percent = (progress.loaded / progress.total) * 100;
@@ -117,7 +103,6 @@ export const uploadLiveRecording = async (
       };
     }
     
-    // Upload to the live_recordings bucket
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('live_recordings')
       .upload(filePath, file, options);
@@ -127,14 +112,13 @@ export const uploadLiveRecording = async (
       return null;
     }
     
-    // Create a record in the breathing_recordings table
     const { data: recordingData, error: recordingError } = await supabase
       .from('breathing_recordings')
       .insert({
         user_id: userId,
         recording_file_path: filePath,
         duration: duration,
-        recording_source: 'live' // Add metadata to indicate this was a live recording
+        recording_source: 'live'
       })
       .select()
       .single();
@@ -144,7 +128,6 @@ export const uploadLiveRecording = async (
       return null;
     }
     
-    // Trigger analysis for the live recording
     setTimeout(() => {
       analyzeRecording(recordingData.id);
     }, 500);
@@ -156,7 +139,6 @@ export const uploadLiveRecording = async (
   }
 };
 
-// Get all recordings for a user
 export const getUserRecordings = async (userId: string): Promise<BreathingRecording[]> => {
   try {
     const { data, error } = await supabase
@@ -177,7 +159,6 @@ export const getUserRecordings = async (userId: string): Promise<BreathingRecord
   }
 };
 
-// Get analysis results for a recording
 export const getRecordingAnalysis = async (recordingId: string): Promise<ApneaAnalysis | null> => {
   try {
     const { data, error } = await supabase
@@ -198,7 +179,6 @@ export const getRecordingAnalysis = async (recordingId: string): Promise<ApneaAn
   }
 };
 
-// Update analysis metadata (including cancellation status)
 export const updateAnalysisMetadata = async (
   analysisId: string, 
   metadata: Record<string, any>
@@ -223,10 +203,8 @@ export const updateAnalysisMetadata = async (
   }
 };
 
-// Mark analysis as cancelled
 export const markAnalysisAsCancelled = async (recordingId: string): Promise<boolean> => {
   try {
-    // First check if analysis record exists
     const { data: analysis, error: fetchError } = await supabase
       .from('apnea_analysis')
       .select('id')
@@ -234,10 +212,8 @@ export const markAnalysisAsCancelled = async (recordingId: string): Promise<bool
       .single();
       
     if (fetchError && fetchError.code !== 'PGRST116') {
-      // Record not found is not an error in this context
       console.error('Error fetching analysis record:', fetchError);
       
-      // Create a cancelled analysis record if none exists
       const { error: insertError } = await supabase
         .from('apnea_analysis')
         .insert({
@@ -258,7 +234,6 @@ export const markAnalysisAsCancelled = async (recordingId: string): Promise<bool
     }
     
     if (analysis) {
-      // Update existing record
       const { error: updateError } = await supabase
         .from('apnea_analysis')
         .update({
@@ -281,10 +256,8 @@ export const markAnalysisAsCancelled = async (recordingId: string): Promise<bool
   }
 };
 
-// Analyze a recording using our edge function
 export const analyzeRecording = async (recordingId: string): Promise<void> => {
   try {
-    // Call the Supabase Edge Function to analyze the recording
     const { error } = await supabase.functions.invoke('analyze-apnea', {
       body: { recordingId }
     });
@@ -297,15 +270,13 @@ export const analyzeRecording = async (recordingId: string): Promise<void> => {
   }
 };
 
-// Get a download URL for a recording
 export const getRecordingDownloadUrl = async (filePath: string): Promise<string | null> => {
   try {
-    // Determine which bucket to use based on file path
     const bucketName = filePath.includes('live-recording') ? 'live_recordings' : 'breathing_recordings';
     
     const { data, error } = await supabase.storage
       .from(bucketName)
-      .createSignedUrl(filePath, 3600); // 1 hour expiry
+      .createSignedUrl(filePath, 3600);
       
     if (error) {
       console.error('Error creating signed URL:', error);
@@ -319,23 +290,18 @@ export const getRecordingDownloadUrl = async (filePath: string): Promise<string 
   }
 };
 
-// Delete a recording and its analysis
 export const deleteRecording = async (recordingId: string, filePath: string): Promise<boolean> => {
   try {
-    // Determine which bucket to use based on file path
     const bucketName = filePath.includes('live-recording') ? 'live_recordings' : 'breathing_recordings';
     
-    // First delete the file from storage
     const { error: storageError } = await supabase.storage
       .from(bucketName)
       .remove([filePath]);
       
     if (storageError) {
       console.error('Error deleting storage file:', storageError);
-      // Continue with database deletion even if storage deletion fails
     }
     
-    // Delete the analysis record
     const { error: analysisError } = await supabase
       .from('apnea_analysis')
       .delete()
@@ -343,10 +309,8 @@ export const deleteRecording = async (recordingId: string, filePath: string): Pr
       
     if (analysisError) {
       console.error('Error deleting analysis record:', analysisError);
-      // Continue with recording deletion even if analysis deletion fails
     }
     
-    // Delete the recording record
     const { error: recordingError } = await supabase
       .from('breathing_recordings')
       .delete()
