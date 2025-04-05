@@ -33,7 +33,7 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
   return (
     <div>
       <div className="flex items-center mb-4">
-        <Sliders size={20} className="mr-2 text-primary" />
+        <Sliders size={20} className="mr-2 text-indigo-500" />
         <h2 className="text-xl font-semibold">Detection</h2>
       </div>
 
@@ -45,7 +45,7 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
               htmlFor="manual"
               className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md border cursor-pointer transition-colors ${
                 settings.detectionMode === "manual"
-                  ? "border-primary bg-primary/10 text-primary font-medium"
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 font-medium"
                   : "border-slate-200 dark:border-slate-700"
               }`}
             >
@@ -64,7 +64,7 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
               htmlFor="auto"
               className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md border cursor-pointer transition-colors ${
                 settings.detectionMode === "auto"
-                  ? "border-primary bg-primary/10 text-primary font-medium"
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 font-medium"
                   : "border-slate-200 dark:border-slate-700"
               }`}
             >
@@ -86,7 +86,7 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
           <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
             <div className="mb-4">
               <div className="flex items-center mb-2">
-                <Clock size={16} className="mr-2 text-primary" />
+                <Clock size={16} className="mr-2 text-indigo-500" />
                 <h3 className="font-medium">Schedule</h3>
               </div>
               <TimeRangePicker 
@@ -98,7 +98,7 @@ const DetectionSection: React.FC<DetectionSectionProps> = ({
             
             <div>
               <div className="flex items-center mb-2">
-                <Calendar size={16} className="mr-2 text-primary" />
+                <Calendar size={16} className="mr-2 text-indigo-500" />
                 <h3 className="font-medium">Active Days</h3>
               </div>
               <WeekdaySelector 

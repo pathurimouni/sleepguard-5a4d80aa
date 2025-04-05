@@ -56,7 +56,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             // Take the average of the current audio data with increased sensitivity
             const value = currentData.reduce((sum, val) => sum + val, 0) / currentData.length;
             // Apply amplification factor to make small changes more visible
-            const amplifiedValue = Math.min(1, value * 4.0); // Increased amplification for better visibility
+            const amplifiedValue = Math.min(1, value * 5.0); // Increased amplification for better visibility
             
             newData.push({ value: amplifiedValue, index: prevData.length > 0 ? prevData[prevData.length - 1].index + 1 : 0 });
             
@@ -72,7 +72,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             const latestEvent = recentEvents[recentEvents.length - 1];
             
             // If high confidence apnea event detected, show alert
-            if (latestEvent.confidence > 0.55 && (latestEvent.detectedSounds?.pausedBreathing || latestEvent.isApnea)) {
+            if (latestEvent.confidence > 0.50 && (latestEvent.detectedSounds?.pausedBreathing || latestEvent.isApnea)) {
               setAlertMessage("Significant breathing irregularity detected!");
               
               // Clear alert after 5 seconds
@@ -130,15 +130,15 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     return () => clearInterval(interval);
   }, [isTracking, status, detectedEvents]);
 
-  // Enhanced color based on status with better contrast
+  // Enhanced color based on status with better contrast and visual appeal
   const getStatusColor = () => {
     switch (status) {
       case "warning":
-        return "rgb(245, 158, 11)"; // Amber
+        return "rgb(245, 158, 11)"; // Updated amber
       case "danger":
-        return "rgb(220, 38, 38)"; // Red
+        return "rgb(239, 68, 68)"; // Updated red
       default:
-        return "rgb(59, 130, 246)"; // Blue
+        return "rgb(79, 70, 229)"; // Updated deeper indigo/purple
     }
   };
 
@@ -146,11 +146,11 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   const getBackgroundColor = () => {
     switch (status) {
       case "warning":
-        return "bg-amber-100/30 dark:bg-amber-900/20"; // Light amber background
+        return "bg-amber-50/40 dark:bg-amber-900/30"; // Lighter amber background
       case "danger":
-        return "bg-red-100/30 dark:bg-red-900/20"; // Light red background
+        return "bg-red-50/40 dark:bg-red-900/30"; // Lighter red background
       default:
-        return "bg-blue-100/20 dark:bg-blue-900/10"; // Blue tints
+        return "bg-indigo-50/40 dark:bg-indigo-900/20"; // Indigo/purple tints
     }
   };
 
@@ -189,23 +189,23 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     return (
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={breathingData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
           <XAxis 
             dataKey="index" 
             tick={false} 
-            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} 
+            axisLine={{ stroke: 'rgba(255,255,255,0.15)' }} 
           />
           <YAxis 
             domain={[0, 1]} 
             tick={false}
-            axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} 
+            axisLine={{ stroke: 'rgba(255,255,255,0.15)' }} 
           />
           <Tooltip 
             content={({ active, payload }) => {
               if (active && payload && payload.length) {
                 return (
-                  <div className="bg-background/90 border border-border p-2 rounded text-xs">
-                    <p>Breathing intensity: {(payload[0].value as number * 100).toFixed(1)}%</p>
+                  <div className="bg-background/95 border border-border p-2 rounded text-xs shadow-md">
+                    <p className="font-medium">Breathing intensity: {(payload[0].value as number * 100).toFixed(1)}%</p>
                   </div>
                 );
               }
@@ -216,7 +216,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
           {/* Reference line for apnea threshold */}
           <ReferenceLine 
             y={thresholdValue} 
-            stroke={status === "danger" ? "rgba(220, 38, 38, 0.5)" : "rgba(245, 158, 11, 0.5)"} 
+            stroke={status === "danger" ? "rgba(239, 68, 68, 0.6)" : "rgba(245, 158, 11, 0.6)"} 
             strokeDasharray="3 3" 
             label={{ 
               value: 'Apnea threshold', 
@@ -230,10 +230,10 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             type="monotone" 
             dataKey="value" 
             stroke={getStatusColor()} 
-            strokeWidth={2}
+            strokeWidth={2.5}
             dot={false} 
             isAnimationActive={false}
-            activeDot={{ r: 5, fill: getStatusColor() }}
+            activeDot={{ r: 6, fill: getStatusColor(), strokeWidth: 1, stroke: "#fff" }}
             animationDuration={0}
           />
           
@@ -242,7 +242,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
             <ReferenceLine 
               key={idx}
               x={breathingData[event.index]?.index}
-              stroke={event.type === "pausedBreathing" ? "rgba(220, 38, 38, 0.8)" : "rgba(245, 158, 11, 0.8)"}
+              stroke={event.type === "pausedBreathing" ? "rgba(239, 68, 68, 0.9)" : "rgba(245, 158, 11, 0.9)"}
               strokeWidth={2}
             />
           ))}
@@ -252,7 +252,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   };
 
   return (
-    <div className={`w-full h-40 md:h-56 rounded-2xl overflow-hidden transition-colors duration-300 ${getBackgroundColor()}`}>
+    <div className={`w-full h-40 md:h-56 rounded-2xl overflow-hidden transition-colors duration-300 ${getBackgroundColor()} border border-slate-200/30 dark:border-slate-700/30 shadow-sm`}>
       <AnimatePresence mode="wait">
         {isTracking ? (
           <motion.div

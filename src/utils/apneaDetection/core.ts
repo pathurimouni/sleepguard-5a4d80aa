@@ -1,3 +1,4 @@
+
 import { AudioAnalysisResult } from "./types";
 
 // Audio context and analysis variables
@@ -29,12 +30,21 @@ export const initializeDetection = async (): Promise<boolean> => {
     
     console.log("Initializing audio context and model with ultra-high sensitivity...");
     
-    // Create AudioContext in a type-safe way
-    audioContext = new (window.AudioContext || 
-      (window as any).webkitAudioContext)({
-      latencyHint: 'interactive',
-      sampleRate: 48000
-    });
+    // Create AudioContext with simplified approach to avoid union type complexity
+    if (window.AudioContext) {
+      audioContext = new window.AudioContext({
+        latencyHint: 'interactive',
+        sampleRate: 48000
+      });
+    } else if ((window as any).webkitAudioContext) {
+      audioContext = new (window as any).webkitAudioContext({
+        latencyHint: 'interactive',
+        sampleRate: 48000
+      });
+    } else {
+      console.error("AudioContext not supported in this browser");
+      return false;
+    }
     
     try {
       audioProcessor = await import("@huggingface/transformers").then(module => {
