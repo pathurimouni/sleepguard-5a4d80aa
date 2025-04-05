@@ -1,3 +1,4 @@
+
 import { AudioAnalysisResult } from "./types";
 
 // Audio context and analysis variables
@@ -29,9 +30,9 @@ export const initializeDetection = async (): Promise<boolean> => {
     
     console.log("Initializing audio context and model with ultra-high sensitivity...");
     
-    // Simplify the AudioContext creation to avoid complex union type
+    // Fix the AudioContext creation to avoid complex union type
     const AudioContextClass = window.AudioContext || 
-      (window as any).webkitAudioContext;
+      ((window as any).webkitAudioContext as typeof AudioContext);
     
     audioContext = new AudioContextClass({
       latencyHint: 'interactive',
