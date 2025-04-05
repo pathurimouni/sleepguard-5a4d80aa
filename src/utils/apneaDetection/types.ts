@@ -1,4 +1,7 @@
 
+// Define common types used across the apnea detection system
+
+// Define type for audio analysis result
 export interface AudioAnalysisResult {
   isApnea: boolean;
   confidence: number;
@@ -22,8 +25,8 @@ export interface AudioAnalysisResult {
   };
 }
 
-// Collection of recent detection events
-export let detectionEvents: AudioAnalysisResult[] = [];
+// Storage for detection events
+export const detectionEvents: AudioAnalysisResult[] = [];
 
 // Get recent detection events
 export const getRecentDetectionEvents = (): AudioAnalysisResult[] => {
