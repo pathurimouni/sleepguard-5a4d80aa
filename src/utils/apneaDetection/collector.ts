@@ -1,5 +1,6 @@
 
 import { getAudioComponents, BREATHING_FREQUENCY_RANGE, SNORING_FREQUENCY_RANGE, GASPING_FREQUENCY_RANGE, AMBIENT_NOISE_THRESHOLD } from "./core";
+import { AudioAnalysisResult } from "./types";
 
 // Breathing pattern data storage
 let breathingPatternBuffer: number[] = [];
@@ -137,4 +138,3 @@ export const addDetectionEvent = (event: AudioAnalysisResult) => {
   if (detectionEvents.length >= 10) detectionEvents.shift();
   detectionEvents.push(event);
 };
-

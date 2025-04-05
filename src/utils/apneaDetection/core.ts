@@ -1,4 +1,3 @@
-
 import { AudioAnalysisResult } from "./types";
 
 // Audio context and analysis variables

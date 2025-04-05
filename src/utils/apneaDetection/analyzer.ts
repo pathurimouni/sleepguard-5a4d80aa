@@ -1,7 +1,7 @@
 
 import { AudioAnalysisResult } from "./types";
 import { getAudioComponents, AMBIENT_NOISE_THRESHOLD, BREATHING_FREQUENCY_RANGE, DETECTION_THRESHOLD_BASE, ANALYSIS_THROTTLE_MS } from "./core";
-import { getBreathingPatterns, detectSoundPattern, addDetectionEvent } from "./collector";
+import { getBreathingPatterns, detectSoundPattern, addDetectionEvent, getRecentDetectionEvents } from "./collector";
 import { detectApneaWithReferencePatterns } from "../apneaReferenceData";
 
 // Analysis state
