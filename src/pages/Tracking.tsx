@@ -42,6 +42,7 @@ const Tracking = () => {
   const [isRecordingUploadable, setIsRecordingUploadable] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [recordingData, setRecordingData] = useState<Blob | null>(null);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
   const [detectedSoundEvents, setDetectedSoundEvents] = useState<Array<{
     timestamp: number;
     type: "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal";
@@ -134,6 +135,9 @@ const Tracking = () => {
         
         try {
           // Request microphone with explicit permissions and optimal settings
+          // Try multiple approaches to ensure microphone access works
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+          
           const stream = await navigator.mediaDevices.getUserMedia({ 
             audio: {
               echoCancellation: false,
@@ -166,8 +170,34 @@ const Tracking = () => {
           setMicPermission(true);
         } catch (error) {
           console.error("Error setting up audio recording:", error);
-          setMicPermission(false);
-          setDetectionMode("simulation");
+          
+          // Try a simpler microphone request as a fallback
+          try {
+            const simpleStream = await navigator.mediaDevices.getUserMedia({ 
+              audio: true 
+            });
+            setMicPermission(true);
+            
+            const recorder = new MediaRecorder(simpleStream);
+            recorder.ondataavailable = (e) => {
+              if (e.data.size > 0) {
+                setAudioChunks((current) => [...current, e.data]);
+              }
+            };
+            
+            recorder.onstop = () => {
+              const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+              setRecordingData(audioBlob);
+              setIsRecordingUploadable(true);
+              setAudioChunks([]);
+            };
+            
+            setMediaRecorder(recorder);
+          } catch (fallbackError) {
+            console.error("Fallback microphone access also failed:", fallbackError);
+            setMicPermission(false);
+            setDetectionMode("simulation");
+          }
         }
       } else {
         console.log("Falling back to simulation mode");
@@ -202,11 +232,11 @@ const Tracking = () => {
     const setupRealTimeDetection = async () => {
       try {
         if (detectionMode === "real") {
-          // Try to start listening with retries for improved microphone access
+          // Try to start listening with multiple retries for improved microphone access
           let retries = 0;
           let started = false;
           
-          while (retries < 3 && !started) {
+          while (retries < 5 && !started) {
             started = await startListening();
             if (!started) {
               console.log(`Attempt ${retries + 1} to access microphone failed, retrying...`);
@@ -225,12 +255,12 @@ const Tracking = () => {
             
             startContinuousDetection((result) => {
               handleDetectionResult(result);
-            }, 1200); // Slightly reduced for more responsive detection
+            }, 800); // Reduced for more responsive detection
           } else {
             setMicPermission(false);
             setDetectionMode("simulation");
-            toast("Microphone access denied", {
-              description: "Falling back to simulation mode",
+            toast("Microphone access issues", {
+              description: "Falling back to simulation mode. Check browser permissions.",
               icon: <AlertTriangle className="h-4 w-4" />,
             });
             
@@ -271,7 +301,6 @@ const Tracking = () => {
   const handleDetectionResult = (result: AudioAnalysisResult) => {
     if (result.nonBreathingNoise) {
       setApneaStatus("normal");
-      // No toast notification for ambient noise
       return;
     }
     
@@ -281,17 +310,18 @@ const Tracking = () => {
         type: "normal" as "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal"
       };
       
+      // Only track meaningful events - focus on apnea indicators
       if (result.detectedSounds.pausedBreathing) {
         newEvent.type = "pausedBreathing";
-      } else if (result.detectedSounds.snoring) {
-        newEvent.type = "snoring";
+        setDetectedSoundEvents(prev => {
+          const newEvents = [...prev, newEvent];
+          if (newEvents.length > 10) {
+            return newEvents.slice(-10);
+          }
+          return newEvents;
+        });
       } else if (result.detectedSounds.gasping) {
         newEvent.type = "gasping";
-      } else if (result.detectedSounds.coughing) {
-        newEvent.type = "coughing";
-      }
-      
-      if (newEvent.type !== "normal" || result.confidence > 0.3) {
         setDetectedSoundEvents(prev => {
           const newEvents = [...prev, newEvent];
           if (newEvents.length > 10) {
@@ -302,12 +332,12 @@ const Tracking = () => {
       }
     }
     
-    if (result.isApnea || result.confidence > 0.35) {
+    if (result.isApnea || result.confidence > 0.30) {
       handleApneaEvent(result.pattern === "missing" ? "severe" : "moderate", result.detectedSounds);
-    } else if (result.confidence > 0.20) {
+    } else if (result.confidence > 0.15) {
       setApneaStatus("warning");
       
-      // Only show apnea-related alerts, not sound notifications
+      // Only show apnea-related alerts, not other sound notifications
       if (result.pattern === "interrupted") {
         toast.info(
           <div className="flex flex-col">
@@ -353,6 +383,7 @@ const Tracking = () => {
         navigator.vibrate(severity === "severe" ? [200, 100, 200, 100, 200] : [100, 50, 100, 50, 100]);
       }
       
+      // Create alert sound
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
       const oscillator1 = audioContext.createOscillator();
@@ -403,6 +434,7 @@ const Tracking = () => {
       setIsRecordingUploadable(false);
       setRecordingData(null);
       setDetectedSoundEvents([]);
+      setShouldRedirect(false);
       
       if (fromSchedule) {
         toast.success("Scheduled sleep tracking started");
@@ -435,7 +467,7 @@ const Tracking = () => {
           setIsScheduled(false);
           setDetectedSoundEvents([]);
           toast.success("Sleep tracking completed and saved");
-          navigate("/");
+          setShouldRedirect(true);
         }
       }
     } catch (error) {
@@ -443,6 +475,18 @@ const Tracking = () => {
       toast.error("Failed to stop tracking");
     }
   };
+
+  // Effect to handle delayed navigation
+  useEffect(() => {
+    if (shouldRedirect) {
+      // Wait a moment for any processing to complete
+      const redirectTimer = setTimeout(() => {
+        navigate("/");
+      }, 1500);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [shouldRedirect, navigate]);
 
   const saveRecordingToSupabase = async (session: SleepSession) => {
     if (!recordingData) return;
