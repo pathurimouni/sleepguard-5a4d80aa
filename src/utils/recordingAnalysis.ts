@@ -88,8 +88,8 @@ export const getRecordingAnalysis = async (recordingId: string): Promise<ApneaAn
       severity = data.severity;
     }
     
-    // Ensure metadata is always an object
-    const metadata: Record<string, any> = data.metadata || {};
+    // Ensure metadata is always an object even if it's missing in the database
+    const metadata = data.metadata || {};
     
     return {
       id: data.id,

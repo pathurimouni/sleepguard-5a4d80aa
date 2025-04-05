@@ -14,3 +14,6 @@ export const resetAllState = () => {
   resetPatternData();
   resetAnalysisState();
 };
+
+// Fix re-export ambiguity by explicitly re-exporting the functions
+export { getRecentDetectionEvents, addDetectionEvent } from "./types";

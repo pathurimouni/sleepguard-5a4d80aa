@@ -30,9 +30,13 @@ export const initializeDetection = async (): Promise<boolean> => {
     
     console.log("Initializing audio context and model with ultra-high sensitivity...");
     
-    // Fix for complex union type
-    const AudioContextClass = window.AudioContext || 
-      ((window as any).webkitAudioContext as typeof AudioContext);
+    // Simplify the AudioContext creation to avoid complex union type
+    let AudioContextClass: any;
+    if (window.AudioContext) {
+      AudioContextClass = window.AudioContext;
+    } else {
+      AudioContextClass = (window as any).webkitAudioContext;
+    }
     
     audioContext = new AudioContextClass({
       latencyHint: 'interactive',
