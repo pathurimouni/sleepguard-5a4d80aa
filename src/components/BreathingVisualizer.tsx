@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Circle, AlertTriangle } from "lucide-react";
@@ -174,7 +175,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
         const eventTime = event.timestamp;
         const currentTime = Date.now();
         const timeAgo = currentTime - eventTime; // ms ago
-        const pointsAgo = timeAgo / updateInterval;
+        const pointsAgo = timeAgo / updateInterval; // numeric value
         const dataLength = breathingData.length;
         const targetIndex = Math.max(0, dataLength - pointsAgo);
         
@@ -204,7 +205,7 @@ const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
               if (active && payload && payload.length) {
                 return (
                   <div className="bg-background/90 border border-border p-2 rounded text-xs">
-                    <p>Breathing intensity: {(payload[0].value * 100).toFixed(1)}%</p>
+                    <p>Breathing intensity: {(payload[0].value as number * 100).toFixed(1)}%</p>
                   </div>
                 );
               }

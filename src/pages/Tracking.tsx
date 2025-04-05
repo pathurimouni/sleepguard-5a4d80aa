@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, Moon, Clock, RefreshCw, AlertTriangle, Calendar } from "lucide-react";
@@ -23,7 +22,8 @@ import {
   startContinuousDetection,
   AudioAnalysisResult,
   generateTestApneaEvent,
-  setSensitivity
+  setSensitivity,
+  resetAllState
 } from "@/utils/apneaDetection";
 import { uploadBreathingRecording, uploadLiveRecording } from "@/utils/recordingService";
 import { getCurrentUser } from "@/utils/auth";
