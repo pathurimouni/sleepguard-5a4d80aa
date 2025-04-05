@@ -83,12 +83,19 @@ export const getRecordingAnalysis = async (recordingId: string): Promise<ApneaAn
       return null;
     }
     
+    // Convert string severity to appropriate enum value
+    let severity: 'none' | 'mild' | 'moderate' | 'severe' = 'none';
+    
+    if (data.severity === 'mild' || data.severity === 'moderate' || data.severity === 'severe') {
+      severity = data.severity;
+    }
+    
     return {
       id: data.id,
       recording_id: data.recording_id,
       is_apnea: data.is_apnea,
       confidence: data.confidence,
-      severity: data.severity,
+      severity: severity,
       events_per_hour: data.events_per_hour,
       analysis_date: data.analysis_date,
       metadata: data.metadata || {}

@@ -53,7 +53,25 @@ export const uploadBreathingRecording = async (
       analyzeRecording(recordingData.id);
     }, 500);
     
-    return recordingData;
+    // Transform return data to match BreathingRecording interface
+    const result: BreathingRecording = {
+      id: recordingData.id,
+      user_id: recordingData.user_id,
+      recording_date: recordingData.recording_date,
+      recording_file_path: recordingData.recording_file_path,
+      duration: recordingData.duration,
+      analysis_complete: recordingData.analysis_complete,
+      recording_source: recordingData.recording_source,
+      // Add default values for new fields
+      file_name: file.name,
+      file_type: file.type,
+      file_size: file.size,
+      created_at: new Date().toISOString(),
+      url: '', // Will be populated by getRecordingDownloadUrl when needed
+      recording_type: 'breathing'
+    };
+    
+    return result;
   } catch (error) {
     console.error('Error in uploadBreathingRecording:', error);
     return null;
@@ -114,7 +132,25 @@ export const uploadLiveRecording = async (
       analyzeRecording(recordingData.id);
     }, 500);
     
-    return recordingData;
+    // Transform return data to match BreathingRecording interface
+    const result: BreathingRecording = {
+      id: recordingData.id,
+      user_id: recordingData.user_id,
+      recording_date: recordingData.recording_date,
+      recording_file_path: recordingData.recording_file_path,
+      duration: recordingData.duration,
+      analysis_complete: recordingData.analysis_complete,
+      recording_source: recordingData.recording_source,
+      // Add default values for new fields
+      file_name: filename,
+      file_type: 'audio/webm',
+      file_size: audioBlob.size,
+      created_at: timestamp,
+      url: '', // Will be populated by getRecordingDownloadUrl when needed
+      recording_type: 'live'
+    };
+    
+    return result;
   } catch (error) {
     console.error('Error in uploadLiveRecording:', error);
     return null;

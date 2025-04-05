@@ -15,7 +15,25 @@ export const getUserRecordings = async (userId: string): Promise<BreathingRecord
       return [];
     }
     
-    return data || [];
+    if (!data) return [];
+    
+    // Transform data to match BreathingRecording interface
+    return data.map(item => ({
+      id: item.id,
+      user_id: item.user_id,
+      recording_date: item.recording_date,
+      recording_file_path: item.recording_file_path,
+      duration: item.duration,
+      analysis_complete: item.analysis_complete,
+      recording_source: item.recording_source || undefined,
+      // Add default values for new fields to maintain compatibility
+      file_name: item.recording_file_path.split('/').pop() || '',
+      file_type: 'audio/webm',
+      file_size: 0,
+      created_at: item.recording_date,
+      url: '', // Will be populated by getRecordingDownloadUrl when needed
+      recording_type: item.recording_source === 'live' ? 'live' : 'breathing'
+    }));
   } catch (error) {
     console.error('Error in getUserRecordings:', error);
     return [];

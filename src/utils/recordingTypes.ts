@@ -3,15 +3,18 @@
 export interface BreathingRecording {
   id: string;
   user_id: string;
-  recorded_at: string;
+  recording_date: string;
+  recorded_at?: string;
   duration: number;
-  url: string;
+  url?: string;
   analysis_complete: boolean;
-  file_name: string;
-  file_type: string;
-  file_size: number;
-  created_at: string;
-  recording_type: 'breathing' | 'live';
+  file_name?: string;
+  file_type?: string;
+  file_size?: number;
+  created_at?: string;
+  recording_type?: 'breathing' | 'live';
+  recording_file_path: string;
+  recording_source?: string;
 }
 
 export interface ApneaAnalysis {
