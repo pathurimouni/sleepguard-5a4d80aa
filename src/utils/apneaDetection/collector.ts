@@ -3,7 +3,8 @@ import {
   BREATHING_FREQUENCY_RANGE,
   SNORING_FREQUENCY_RANGE,
   GASPING_FREQUENCY_RANGE,
-  getAudioComponents
+  getAudioComponents,
+  AMBIENT_NOISE_THRESHOLD
 } from "./core";
 
 // Breathing pattern data storage

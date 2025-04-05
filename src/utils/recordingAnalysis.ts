@@ -7,7 +7,6 @@ export const analyzeRecording = async (recordingId: string): Promise<boolean> =>
   return triggerRecordingAnalysis(recordingId);
 };
 
-// Function to trigger analysis of a recording using Supabase edge function
 export const triggerRecordingAnalysis = async (recordingId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase.functions.invoke('analyze-apnea', {
@@ -27,7 +26,6 @@ export const triggerRecordingAnalysis = async (recordingId: string): Promise<boo
   }
 };
 
-// Function to mark an analysis as cancelled
 export const markAnalysisAsCancelled = async (recordingId: string): Promise<boolean> => {
   try {
     // First, update the recording's analysis_complete status
@@ -90,6 +88,9 @@ export const getRecordingAnalysis = async (recordingId: string): Promise<ApneaAn
       severity = data.severity;
     }
     
+    // Ensure metadata is always an object
+    const metadata = data.metadata || {};
+    
     return {
       id: data.id,
       recording_id: data.recording_id,
@@ -98,7 +99,7 @@ export const getRecordingAnalysis = async (recordingId: string): Promise<ApneaAn
       severity: severity,
       events_per_hour: data.events_per_hour,
       analysis_date: data.analysis_date,
-      metadata: data.metadata || {}
+      metadata
     };
   } catch (error) {
     console.error('Error in getRecordingAnalysis:', error);
@@ -127,7 +128,6 @@ export const checkAnalysisStatus = async (recordingId: string): Promise<boolean>
   }
 };
 
-// Function to simulate analysis for testing or demo purposes
 export const simulateRecordingAnalysis = (recording: BreathingRecording): ApneaAnalysis => {
   // Get a random severity with weighted distribution
   const random = Math.random();

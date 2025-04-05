@@ -1,10 +1,13 @@
-import { AudioAnalysisResult, detectionEvents, getRecentDetectionEvents } from "./types";
+import { AudioAnalysisResult, detectionEvents, addDetectionEvent, getRecentDetectionEvents } from "./types";
 import { 
   DETECTION_THRESHOLD_BASE, 
   AMBIENT_NOISE_THRESHOLD,
   BREATHING_FREQUENCY_RANGE,
-  getAudioComponents
+  getAudioComponents,
+  ANALYSIS_THROTTLE_MS
 } from "./core";
+import { getBreathingPatterns, detectSoundPattern } from "./collector";
+import { detectApneaWithReferencePatterns } from "../apneaReferenceData";
 
 // Analysis state
 let consecutiveAnomalies = 0;

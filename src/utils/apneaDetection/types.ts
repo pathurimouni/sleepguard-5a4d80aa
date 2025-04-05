@@ -29,3 +29,9 @@ export let detectionEvents: AudioAnalysisResult[] = [];
 export const getRecentDetectionEvents = (): AudioAnalysisResult[] => {
   return [...detectionEvents];
 };
+
+// Add detection event
+export const addDetectionEvent = (event: AudioAnalysisResult) => {
+  if (detectionEvents.length >= 10) detectionEvents.shift();
+  detectionEvents.push(event);
+};
