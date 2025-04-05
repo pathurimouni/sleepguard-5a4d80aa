@@ -60,8 +60,8 @@ export const uploadBreathingRecording = async (
       recording_date: recordingData.recording_date,
       recording_file_path: recordingData.recording_file_path,
       duration: recordingData.duration,
-      analysis_complete: recordingData.analysis_complete,
-      recording_source: recordingData.recording_source,
+      analysis_complete: recordingData.analysis_complete || false,
+      recording_source: recordingData.recording_source || undefined,
       // Add default values for new fields
       file_name: file.name,
       file_type: file.type,
@@ -139,8 +139,8 @@ export const uploadLiveRecording = async (
       recording_date: recordingData.recording_date,
       recording_file_path: recordingData.recording_file_path,
       duration: recordingData.duration,
-      analysis_complete: recordingData.analysis_complete,
-      recording_source: recordingData.recording_source,
+      analysis_complete: recordingData.analysis_complete || false,
+      recording_source: recordingData.recording_source || 'live',
       // Add default values for new fields
       file_name: filename,
       file_type: 'audio/webm',

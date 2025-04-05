@@ -21,3 +21,11 @@ export interface AudioAnalysisResult {
     description: string;
   };
 }
+
+// Collection of recent detection events
+export let detectionEvents: AudioAnalysisResult[] = [];
+
+// Get recent detection events
+export const getRecentDetectionEvents = (): AudioAnalysisResult[] => {
+  return [...detectionEvents];
+};

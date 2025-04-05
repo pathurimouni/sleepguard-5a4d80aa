@@ -30,8 +30,8 @@ export const initializeDetection = async (): Promise<boolean> => {
     
     console.log("Initializing audio context and model with ultra-high sensitivity...");
     
-    // Use explicit type annotation to avoid complex union type
-    const AudioContextClass: typeof AudioContext = window.AudioContext || 
+    // Use AudioContext without complex union type
+    const AudioContextClass = window.AudioContext || 
       (window as any).webkitAudioContext;
     
     audioContext = new AudioContextClass({

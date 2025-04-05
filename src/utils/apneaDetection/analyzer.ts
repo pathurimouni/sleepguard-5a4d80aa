@@ -1,8 +1,10 @@
-
-import { AudioAnalysisResult } from "./types";
-import { getAudioComponents, AMBIENT_NOISE_THRESHOLD, BREATHING_FREQUENCY_RANGE, DETECTION_THRESHOLD_BASE, ANALYSIS_THROTTLE_MS } from "./core";
-import { getBreathingPatterns, detectSoundPattern, addDetectionEvent, getRecentDetectionEvents } from "./collector";
-import { detectApneaWithReferencePatterns } from "../apneaReferenceData";
+import { AudioAnalysisResult, detectionEvents, getRecentDetectionEvents } from "./types";
+import { 
+  DETECTION_THRESHOLD_BASE, 
+  AMBIENT_NOISE_THRESHOLD,
+  BREATHING_FREQUENCY_RANGE,
+  getAudioComponents
+} from "./core";
 
 // Analysis state
 let consecutiveAnomalies = 0;
@@ -200,6 +202,11 @@ export const analyzeCurrentAudio = (): AudioAnalysisResult => {
 
 // Reset consecutive anomalies counter
 export const resetAnalysisState = () => {
+  // Reset any analyzer-specific state here
   consecutiveAnomalies = 0;
-  lastAnalysisTime = 0;
+  
+  // Clear detection events
+  while (detectionEvents.length > 0) {
+    detectionEvents.pop();
+  }
 };

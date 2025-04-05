@@ -1,6 +1,10 @@
-
-import { getAudioComponents, BREATHING_FREQUENCY_RANGE, SNORING_FREQUENCY_RANGE, GASPING_FREQUENCY_RANGE, AMBIENT_NOISE_THRESHOLD } from "./core";
 import { AudioAnalysisResult } from "./types";
+import { 
+  BREATHING_FREQUENCY_RANGE,
+  SNORING_FREQUENCY_RANGE,
+  GASPING_FREQUENCY_RANGE,
+  getAudioComponents
+} from "./core";
 
 // Breathing pattern data storage
 let breathingPatternBuffer: number[] = [];
@@ -117,7 +121,7 @@ export const getBreathingPatterns = () => ({
   soundPatterns
 });
 
-// Reset pattern data (for use when starting/stopping)
+// Export collection state management
 export const resetPatternData = () => {
   breathingPatternBuffer = [];
   historicalBreathingData = [];
