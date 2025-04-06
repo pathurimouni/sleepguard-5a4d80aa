@@ -1,7 +1,7 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { RefreshCw, AlertTriangle } from "lucide-react";
 import { 
   startNewSession, 
   getCurrentSession, 
@@ -553,6 +553,3 @@ export const useTrackingSession = () => {
     initializeDetectionSystem,
   };
 };
-
-// Import from lucide-react outside the hook to avoid circular reference
-import { RefreshCw, AlertTriangle } from "lucide-react";
