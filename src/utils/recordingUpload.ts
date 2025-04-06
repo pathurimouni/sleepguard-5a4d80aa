@@ -12,6 +12,7 @@ interface BreathingRecordingInsert {
   recording_source?: string;
 }
 
+// Update the interface to include the missing property
 interface BreathingRecordingRow {
   id: string;
   user_id: string;
@@ -81,7 +82,7 @@ export const uploadBreathingRecording = async (
       recording_file_path: data.recording_file_path,
       duration: data.duration,
       analysis_complete: data.analysis_complete || false,
-      recording_source: data.recording_source,
+      recording_source: data.recording_source || 'breathing',
       // Add default values for new fields
       file_name: file.name,
       file_type: file.type,

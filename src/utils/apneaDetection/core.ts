@@ -1,4 +1,3 @@
-
 import { AudioAnalysisResult } from "./types";
 
 // Audio context and analysis variables
@@ -30,19 +29,13 @@ export const initializeDetection = async (): Promise<boolean> => {
     
     console.log("Initializing audio context and model with ultra-high sensitivity...");
     
-    // Create AudioContext with simplified approach to avoid union type complexity
-    if (window.AudioContext) {
-      audioContext = new window.AudioContext({
-        latencyHint: 'interactive',
-        sampleRate: 48000
-      });
-    } else if ((window as any).webkitAudioContext) {
-      audioContext = new (window as any).webkitAudioContext({
-        latencyHint: 'interactive',
-        sampleRate: 48000
-      });
+    // Create AudioContext - simplified to avoid complex union type
+    if (typeof window !== 'undefined') {
+      // Directly use AudioContext to avoid complex union types
+      audioContext = new (window.AudioContext || 
+        (window as any).webkitAudioContext)();
     } else {
-      console.error("AudioContext not supported in this browser");
+      console.error("Window object not available");
       return false;
     }
     
