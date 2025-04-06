@@ -75,15 +75,18 @@ export const uploadBreathingRecording = async (
       analyzeRecording(data.id);
     }, 500);
     
+    // Explicitly cast data to BreathingRecordingRow to ensure type safety
+    const recordingRow = data as BreathingRecordingRow;
+    
     // Transform return data to match BreathingRecording interface
     const result: BreathingRecording = {
-      id: data.id,
-      user_id: data.user_id,
-      recording_date: data.recording_date,
-      recording_file_path: data.recording_file_path,
-      duration: data.duration,
-      analysis_complete: data.analysis_complete || false,
-      recording_source: data.recording_source || 'breathing',
+      id: recordingRow.id,
+      user_id: recordingRow.user_id,
+      recording_date: recordingRow.recording_date,
+      recording_file_path: recordingRow.recording_file_path,
+      duration: recordingRow.duration,
+      analysis_complete: recordingRow.analysis_complete || false,
+      recording_source: recordingRow.recording_source || 'breathing',
       // Add default values for new fields
       file_name: file.name,
       file_type: file.type,
@@ -156,15 +159,18 @@ export const uploadLiveRecording = async (
       analyzeRecording(data.id);
     }, 500);
     
+    // Explicitly cast data to BreathingRecordingRow to ensure type safety
+    const recordingRow = data as BreathingRecordingRow;
+    
     // Transform return data to match BreathingRecording interface
     const result: BreathingRecording = {
-      id: data.id,
-      user_id: data.user_id,
-      recording_date: data.recording_date,
-      recording_file_path: data.recording_file_path,
-      duration: data.duration,
-      analysis_complete: data.analysis_complete || false,
-      recording_source: data.recording_source || 'live',
+      id: recordingRow.id,
+      user_id: recordingRow.user_id,
+      recording_date: recordingRow.recording_date,
+      recording_file_path: recordingRow.recording_file_path,
+      duration: recordingRow.duration,
+      analysis_complete: recordingRow.analysis_complete || false,
+      recording_source: recordingRow.recording_source || 'live',
       // Add default values for new fields
       file_name: filename,
       file_type: 'audio/webm',
