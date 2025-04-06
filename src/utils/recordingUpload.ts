@@ -9,7 +9,7 @@ interface BreathingRecordingInsert {
   user_id: string;
   recording_file_path: string;
   duration: number;
-  recording_source?: string;
+  recording_source: string; // Added this property to match the required type
 }
 
 // Update the interface to include the missing property
@@ -20,7 +20,7 @@ interface BreathingRecordingRow {
   recording_file_path: string;
   duration: number;
   analysis_complete: boolean;
-  recording_source?: string;
+  recording_source: string; // Added this property to match DB return type
 }
 
 export const uploadBreathingRecording = async (

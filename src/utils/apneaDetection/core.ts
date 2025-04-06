@@ -32,7 +32,7 @@ export const initializeDetection = async (): Promise<boolean> => {
     
     // Create AudioContext - simplified to avoid complex union type
     if (typeof window !== 'undefined') {
-      // Use a type assertion to avoid the complex union type
+      // Use a separate variable first to avoid the complex union type
       const AudioContextClass = window.AudioContext || 
         (window as any).webkitAudioContext;
       audioContext = new AudioContextClass();
