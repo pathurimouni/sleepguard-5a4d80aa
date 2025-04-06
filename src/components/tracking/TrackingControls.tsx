@@ -38,7 +38,7 @@ const TrackingControls: React.FC<TrackingControlsProps> = ({
         <ActionButton
           variant="primary"
           size="lg"
-          onClick={() => startTracking(false)}
+          onClick={startTracking}
           icon={<Play size={18} />}
         >
           Start Tracking

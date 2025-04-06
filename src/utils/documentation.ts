@@ -1,213 +1,188 @@
 
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import { format } from "date-fns";
 
-// Add the missing types for jsPDF-autotable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
+export const generateProjectDocumentation = async (): Promise<boolean> => {
+  try {
+    // Create a new PDF document
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
 
-export interface DocumentationSection {
-  title: string;
-  content: string;
-  subsections?: DocumentationSection[];
-}
+    // Add document title
+    doc.setFontSize(24);
+    doc.setTextColor(0, 51, 102);
+    doc.text("SleepGuard", 105, 20, { align: "center" });
+    doc.text("Project Documentation", 105, 30, { align: "center" });
 
-export const generateProjectDocumentation = () => {
-  const doc = new jsPDF();
-  
-  // Title and basic info
-  doc.setFontSize(22);
-  doc.setTextColor(79, 70, 229); // Indigo color
-  doc.text('SleepGuard Project Documentation', 20, 20);
-  
-  doc.setFontSize(12);
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 30);
-  
-  doc.setFontSize(14);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Overview', 20, 40);
-  
-  doc.setFontSize(10);
-  const overviewText = 
-    'SleepGuard is a web application designed to help users monitor and detect sleep apnea patterns ' +
-    'using microphone input. The application analyzes breathing sounds in real-time to identify ' +
-    'potential breathing irregularities associated with sleep apnea.';
-  
-  doc.text(overviewText, 20, 50, { maxWidth: 170 });
-  
-  // Features
-  doc.setFontSize(14);
-  doc.text('Key Features', 20, 70);
-  
-  doc.setFontSize(10);
-  const features = [
-    'Real-time breathing pattern analysis using microphone input',
-    'Sleep apnea event detection with visual alerts',
-    'Recording and uploading capabilities for long-term monitoring',
-    'Historical data viewing and analysis results',
-    'Customizable detection sensitivity and automated scheduling',
-    'Dark mode support and responsive design for all devices'
-  ];
-  
-  let yPos = 80;
-  features.forEach(feature => {
-    doc.text(`• ${feature}`, 25, yPos);
-    yPos += 8;
-  });
-  
-  // Tech Stack
-  doc.setFontSize(14);
-  doc.text('Technology Stack', 20, yPos + 10);
-  
-  const techStack = [
-    ['Frontend Framework', 'React with TypeScript'],
-    ['State Management', 'React Hooks and Context API'],
-    ['UI Components', 'Tailwind CSS, Shadcn UI, Framer Motion'],
-    ['Audio Processing', 'Web Audio API, HuggingFace Transformers'],
-    ['Data Visualization', 'Recharts'],
-    ['Backend Storage', 'Supabase'],
-    ['Authentication', 'Supabase Auth'],
-    ['Deployment', 'Vercel/Netlify compatible']
-  ];
-  
-  doc.autoTable({
-    startY: yPos + 15,
-    head: [['Component', 'Technology']],
-    body: techStack,
-    theme: 'grid',
-    headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
-    styles: { fontSize: 10 },
-    margin: { left: 20, right: 20 }
-  });
-  
-  // System Architecture
-  yPos = doc.autoTable.previous.finalY + 10;
-  doc.setFontSize(14);
-  doc.text('System Architecture', 20, yPos);
-  
-  doc.setFontSize(10);
-  const architectureText = 
-    'SleepGuard follows a client-centric architecture where most processing happens on the client side ' +
-    'for privacy and performance reasons. Audio analysis is performed locally using the Web Audio API ' +
-    'and optimized algorithms. Data is only sent to the server when users explicitly save recordings. ' +
-    'The application is built with a component-based architecture following React best practices.';
-  
-  doc.text(architectureText, 20, yPos + 10, { maxWidth: 170 });
-  
-  // Add a new page
-  doc.addPage();
-  
-  // Core Modules
-  doc.setFontSize(14);
-  doc.text('Core Modules', 20, 20);
-  
-  const modules = [
-    ['Audio Capture', 'Handles microphone access and raw audio data acquisition'],
-    ['Signal Processing', 'Filters and processes audio signals to extract breathing patterns'],
-    ['Pattern Analysis', 'Detects irregularities in breathing patterns with ML algorithms'],
-    ['Real-time Visualization', 'Displays breathing patterns and events in real-time charts'],
-    ['Recording Management', 'Handles saving, uploading, and retrieving of recording data'],
-    ['User Settings', 'Manages user preferences, sensitivity settings, and schedules']
-  ];
-  
-  doc.autoTable({
-    startY: 25,
-    head: [['Module', 'Description']],
-    body: modules,
-    theme: 'grid',
-    headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
-    styles: { fontSize: 10 },
-    margin: { left: 20, right: 20 }
-  });
-  
-  // Usage Instructions
-  yPos = doc.autoTable.previous.finalY + 10;
-  doc.setFontSize(14);
-  doc.text('User Guide', 20, yPos);
-  
-  doc.setFontSize(12);
-  yPos += 10;
-  doc.text('Getting Started', 20, yPos);
-  
-  doc.setFontSize(10);
-  yPos += 8;
-  doc.text('1. Create an account or log in to access all features', 25, yPos);
-  yPos += 8;
-  doc.text('2. Grant microphone permissions when prompted', 25, yPos);
-  yPos += 8;
-  doc.text('3. Navigate to the Tracking page to begin monitoring', 25, yPos);
-  yPos += 8;
-  doc.text('4. Adjust sensitivity in Settings if needed', 25, yPos);
-  
-  yPos += 15;
-  doc.setFontSize(12);
-  doc.text('Sleep Tracking', 20, yPos);
-  
-  doc.setFontSize(10);
-  yPos += 8;
-  doc.text('1. Place device near your sleeping area', 25, yPos);
-  yPos += 8;
-  doc.text('2. Press "Start Tracking" before sleep', 25, yPos);
-  yPos += 8;
-  doc.text('3. The app will monitor breathing patterns throughout the night', 25, yPos);
-  yPos += 8;
-  doc.text('4. Press "Stop Tracking" upon waking to save session', 25, yPos);
-  
-  yPos += 15;
-  doc.setFontSize(12);
-  doc.text('Viewing Results', 20, yPos);
-  
-  doc.setFontSize(10);
-  yPos += 8;
-  doc.text('1. Navigate to the Dashboard to view history', 25, yPos);
-  yPos += 8;
-  doc.text('2. Select recordings to view detailed analysis', 25, yPos);
-  yPos += 8;
-  doc.text('3. Review detected events and breathing patterns', 25, yPos);
-  
-  // Recommendations
-  yPos += 15;
-  doc.setFontSize(14);
-  doc.text('Recommendations', 20, yPos);
-  
-  doc.setFontSize(10);
-  yPos += 10;
-  const recommendationsText = 
-    'For best results, place the device within 1-2 feet of your head during sleep. Ensure the microphone is ' +
-    'not obstructed. If using automated scheduling, set the time to cover your entire sleep period with some ' +
-    'buffer before and after. Start with a medium sensitivity setting (5-6) and adjust based on results.';
-  
-  doc.text(recommendationsText, 20, yPos, { maxWidth: 170 });
-  
-  // Privacy & Security
-  yPos += 30;
-  doc.setFontSize(14);
-  doc.text('Privacy & Security', 20, yPos);
-  
-  doc.setFontSize(10);
-  yPos += 10;
-  const privacyText = 
-    'SleepGuard processes all audio data locally on your device. Raw audio is never sent to our servers ' +
-    'unless you explicitly choose to save recordings. Saved recordings are encrypted and stored securely. ' +
-    'You can delete your recordings at any time from the Dashboard.';
-  
-  doc.text(privacyText, 20, yPos, { maxWidth: 170 });
-  
-  // Add a footer with page numbers
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
+    // Add date
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${format(new Date(), "PPP")}`, 105, 40, { align: "center" });
+
+    // Add project overview section
+    doc.setFontSize(20);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Project Overview", 20, 60);
+
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(
+      "SleepGuard is a comprehensive sleep apnea monitoring and analysis application that uses " +
+      "advanced audio processing to detect and analyze breathing patterns during sleep. It can " +
+      "record, analyze, and provide insights into potential sleep apnea episodes.",
+      20, 70, { maxWidth: 170 }
+    );
+
+    // Add key features section
+    doc.setFontSize(18);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Key Features", 20, 100);
+
+    // Create a table for features
+    autoTable(doc, {
+      startY: 105,
+      head: [["Feature", "Description"]],
+      body: [
+        ["Real-time Monitoring", "Monitors breathing patterns in real-time using microphone input"],
+        ["Sleep Apnea Detection", "Detects potential sleep apnea events using audio analysis"],
+        ["Recording Storage", "Securely stores and organizes sleep recordings for later review"],
+        ["Detailed Analysis", "Provides detailed analysis of sleep quality and apnea events"],
+        ["Scheduling", "Automatic scheduled recordings based on user-defined preferences"],
+        ["User Dashboard", "Visual representation of sleep data and trends over time"]
+      ],
+      headStyles: { fillColor: [0, 51, 102] },
+      styles: { font: "helvetica", fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 120 }
+      }
+    });
+
+    // Add a new page
+    doc.addPage();
+
+    // Add technical architecture section
+    doc.setFontSize(20);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Technical Architecture", 20, 20);
+
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(
+      "SleepGuard is built using a modern React-based frontend with TypeScript for type safety. " +
+      "It leverages Supabase for backend services including authentication, database, and storage. " +
+      "The application uses advanced audio processing algorithms for apnea detection.",
+      20, 30, { maxWidth: 170 }
+    );
+
+    // Create a table for architecture components
+    autoTable(doc, {
+      startY: 50,
+      head: [["Component", "Technology", "Purpose"]],
+      body: [
+        ["Frontend", "React, TypeScript, Tailwind CSS", "User interface and client-side logic"],
+        ["Backend", "Supabase", "API, Authentication, Database, Storage"],
+        ["Audio Processing", "Web Audio API, Custom Algorithms", "Breathing pattern analysis"],
+        ["State Management", "React Hooks, Context", "Application state and data flow"],
+        ["Storage", "IndexedDB, Local Storage", "Client-side data persistence"],
+        ["Deployment", "Vercel/Netlify", "Web hosting and distribution"]
+      ],
+      headStyles: { fillColor: [0, 51, 102] },
+      styles: { font: "helvetica", fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 70 }
+      }
+    });
+
+    // Add implementation details section
+    doc.setFontSize(18);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Implementation Details", 20, 110);
+
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(
+      "The apnea detection system works by capturing audio through the device microphone, " +
+      "analyzing the frequency patterns, and identifying potential apnea events based on " +
+      "machine learning insights. Data is securely stored and analyzed in real-time.",
+      20, 120, { maxWidth: 170 }
+    );
+
+    // Add page for user guide
+    doc.addPage();
+
+    // Add user guide section
+    doc.setFontSize(20);
+    doc.setTextColor(0, 51, 102);
+    doc.text("User Guide", 20, 20);
+
+    // Create a table for user guide steps
+    autoTable(doc, {
+      startY: 30,
+      head: [["Step", "Action", "Notes"]],
+      body: [
+        ["1", "Create an account", "Sign up with email and password"],
+        ["2", "Set up your profile", "Enter sleep information and preferences"],
+        ["3", "Start sleep tracking", "Place device near bed and start tracking"],
+        ["4", "View results", "Check dashboard for sleep analysis"],
+        ["5", "Configure settings", "Adjust sensitivity and alert preferences"],
+        ["6", "Schedule recordings", "Set up automatic sleep tracking"]
+      ],
+      headStyles: { fillColor: [0, 51, 102] },
+      styles: { font: "helvetica", fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: 90 }
+      }
+    });
+
+    // Add recommendations section
+    doc.setFontSize(18);
+    doc.setTextColor(0, 51, 102);
+    doc.text("Recommendations", 20, 90);
+
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(
+      "For optimal results, please follow these recommendations:\n\n" +
+      "• Place the device within 3-5 feet of your head during sleep\n" +
+      "• Ensure the microphone is not obstructed\n" +
+      "• Use in a quiet environment with minimal background noise\n" +
+      "• Charge your device before overnight tracking\n" +
+      "• Consult a healthcare professional for medical advice",
+      20, 100, { maxWidth: 170 }
+    );
+
+    // Add disclaimer
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth() - 40, doc.internal.pageSize.getHeight() - 10);
-    doc.text('SleepGuard Documentation', 20, doc.internal.pageSize.getHeight() - 10);
-  }
-  
-  return doc.save('SleepGuard_Documentation.pdf');
-};
+    doc.text(
+      "Disclaimer: SleepGuard is not a medical device and should not be used to diagnose or treat any " +
+      "medical condition. Always consult with a healthcare professional for medical advice.",
+      20, 140, { maxWidth: 170 }
+    );
 
-export default generateProjectDocumentation;
+    // Add page number to all pages
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Page ${i} of ${pageCount}`, 105, 287, { align: "center" });
+    }
+
+    // Save the PDF
+    doc.save("SleepGuard_Documentation.pdf");
+    return true;
+  } catch (error) {
+    console.error("Error generating documentation:", error);
+    return false;
+  }
+};

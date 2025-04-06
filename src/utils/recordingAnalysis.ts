@@ -2,6 +2,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import { BreathingRecording, ApneaAnalysis } from "./recordingTypes";
 
+// Define interfaces for Supabase database row types
+interface ApneaAnalysisRow {
+  id: string;
+  recording_id: string;
+  is_apnea: boolean;
+  confidence: number;
+  severity: string | null;
+  events_per_hour: number | null;
+  analysis_date: string;
+  metadata?: Record<string, any>;
+}
+
 // Function to analyze a recording using the Supabase edge function
 export const analyzeRecording = async (recordingId: string): Promise<boolean> => {
   return triggerRecordingAnalysis(recordingId);
@@ -81,24 +93,26 @@ export const getRecordingAnalysis = async (recordingId: string): Promise<ApneaAn
       return null;
     }
     
+    const row = data as ApneaAnalysisRow;
+    
     // Convert string severity to appropriate enum value
     let severity: 'none' | 'mild' | 'moderate' | 'severe' = 'none';
     
-    if (data.severity === 'mild' || data.severity === 'moderate' || data.severity === 'severe') {
-      severity = data.severity;
+    if (row.severity === 'mild' || row.severity === 'moderate' || row.severity === 'severe') {
+      severity = row.severity;
     }
     
     // Ensure metadata is always an object even if it's missing in the database
-    const metadata = data.metadata || {};
+    const metadata = row.metadata || {};
     
     return {
-      id: data.id,
-      recording_id: data.recording_id,
-      is_apnea: data.is_apnea,
-      confidence: data.confidence,
+      id: row.id,
+      recording_id: row.recording_id,
+      is_apnea: row.is_apnea,
+      confidence: row.confidence,
       severity: severity,
-      events_per_hour: data.events_per_hour,
-      analysis_date: data.analysis_date,
+      events_per_hour: row.events_per_hour || 0,
+      analysis_date: row.analysis_date,
       metadata
     };
   } catch (error) {

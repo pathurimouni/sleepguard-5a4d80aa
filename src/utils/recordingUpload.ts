@@ -4,6 +4,24 @@ import { v4 as uuidv4 } from "uuid";
 import { BreathingRecording } from "./recordingTypes";
 import { analyzeRecording } from "./recordingAnalysis";
 
+// Define the database insert and return types
+interface BreathingRecordingInsert {
+  user_id: string;
+  recording_file_path: string;
+  duration: number;
+  recording_source?: string;
+}
+
+interface BreathingRecordingRow {
+  id: string;
+  user_id: string;
+  recording_date: string;
+  recording_file_path: string;
+  duration: number;
+  analysis_complete: boolean;
+  recording_source?: string;
+}
+
 export const uploadBreathingRecording = async (
   userId: string,
   file: File,
@@ -34,13 +52,15 @@ export const uploadBreathingRecording = async (
       return null;
     }
     
-    const { data: recordingData, error: recordingError } = await supabase
+    const recordingData: BreathingRecordingInsert = {
+      user_id: userId,
+      recording_file_path: filePath,
+      duration: duration
+    };
+    
+    const { data, error: recordingError } = await supabase
       .from('breathing_recordings')
-      .insert({
-        user_id: userId,
-        recording_file_path: filePath,
-        duration: duration
-      })
+      .insert(recordingData)
       .select()
       .single();
       
@@ -50,18 +70,18 @@ export const uploadBreathingRecording = async (
     }
     
     setTimeout(() => {
-      analyzeRecording(recordingData.id);
+      analyzeRecording(data.id);
     }, 500);
     
     // Transform return data to match BreathingRecording interface
     const result: BreathingRecording = {
-      id: recordingData.id,
-      user_id: recordingData.user_id,
-      recording_date: recordingData.recording_date,
-      recording_file_path: recordingData.recording_file_path,
-      duration: recordingData.duration,
-      analysis_complete: recordingData.analysis_complete || false,
-      recording_source: recordingData.recording_source || undefined,
+      id: data.id,
+      user_id: data.user_id,
+      recording_date: data.recording_date,
+      recording_file_path: data.recording_file_path,
+      duration: data.duration,
+      analysis_complete: data.analysis_complete || false,
+      recording_source: data.recording_source,
       // Add default values for new fields
       file_name: file.name,
       file_type: file.type,
@@ -112,14 +132,16 @@ export const uploadLiveRecording = async (
       return null;
     }
     
-    const { data: recordingData, error: recordingError } = await supabase
+    const recordingData: BreathingRecordingInsert = {
+      user_id: userId,
+      recording_file_path: filePath,
+      duration: duration,
+      recording_source: 'live'
+    };
+    
+    const { data, error: recordingError } = await supabase
       .from('breathing_recordings')
-      .insert({
-        user_id: userId,
-        recording_file_path: filePath,
-        duration: duration,
-        recording_source: 'live'
-      })
+      .insert(recordingData)
       .select()
       .single();
       
@@ -129,18 +151,18 @@ export const uploadLiveRecording = async (
     }
     
     setTimeout(() => {
-      analyzeRecording(recordingData.id);
+      analyzeRecording(data.id);
     }, 500);
     
     // Transform return data to match BreathingRecording interface
     const result: BreathingRecording = {
-      id: recordingData.id,
-      user_id: recordingData.user_id,
-      recording_date: recordingData.recording_date,
-      recording_file_path: recordingData.recording_file_path,
-      duration: recordingData.duration,
-      analysis_complete: recordingData.analysis_complete || false,
-      recording_source: recordingData.recording_source || 'live',
+      id: data.id,
+      user_id: data.user_id,
+      recording_date: data.recording_date,
+      recording_file_path: data.recording_file_path,
+      duration: data.duration,
+      analysis_complete: data.analysis_complete || false,
+      recording_source: data.recording_source || 'live',
       // Add default values for new fields
       file_name: filename,
       file_type: 'audio/webm',

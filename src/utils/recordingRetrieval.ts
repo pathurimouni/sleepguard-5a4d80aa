@@ -2,6 +2,17 @@
 import { supabase } from "@/integrations/supabase/client";
 import { BreathingRecording } from "./recordingTypes";
 
+// Define the database table types to match Supabase schema
+interface BreathingRecordingRow {
+  id: string;
+  user_id: string;
+  recording_date: string;
+  recording_file_path: string;
+  duration: number;
+  analysis_complete: boolean;
+  recording_source?: string;
+}
+
 export const getUserRecordings = async (userId: string): Promise<BreathingRecording[]> => {
   try {
     const { data, error } = await supabase
@@ -18,14 +29,14 @@ export const getUserRecordings = async (userId: string): Promise<BreathingRecord
     if (!data) return [];
     
     // Transform data to match BreathingRecording interface
-    return data.map(item => ({
+    return (data as BreathingRecordingRow[]).map(item => ({
       id: item.id,
       user_id: item.user_id,
       recording_date: item.recording_date,
       recording_file_path: item.recording_file_path,
       duration: item.duration,
       analysis_complete: item.analysis_complete,
-      recording_source: item.recording_source || undefined,
+      recording_source: item.recording_source,
       // Add default values for new fields to maintain compatibility
       file_name: item.recording_file_path.split('/').pop() || '',
       file_type: 'audio/webm',

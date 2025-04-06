@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Moon, RefreshCw } from "lucide-react";
 import PageTransition from "@/components/PageTransition";
 import BreathingVisualizer from "@/components/BreathingVisualizer";
 import { useTrackingSession } from "@/hooks/useTrackingSession";
@@ -103,7 +102,7 @@ const Tracking = () => {
 
               <TrackingControls
                 isTracking={isTracking}
-                startTracking={() => startTracking(false)}
+                startTracking={startTracking}
                 stopTracking={stopTracking}
                 isUploading={isUploading}
               />

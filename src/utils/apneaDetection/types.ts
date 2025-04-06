@@ -25,6 +25,18 @@ export interface AudioAnalysisResult {
   };
 }
 
+// Pre-defined pattern types to avoid complex union types
+export type PatternType = 
+  | "regular-quiet"
+  | "deeper-sleep"
+  | "continued-effort"
+  | "moderate-reduction"
+  | "complete-cessation"
+  | "gradual-central";
+
+// Predefined sound detection types
+export type SoundType = "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal";
+
 // Storage for detection events
 export const detectionEvents: AudioAnalysisResult[] = [];
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { RefreshCw, AlertTriangle } from "lucide-react";
@@ -22,6 +22,28 @@ import {
 import { uploadBreathingRecording, uploadLiveRecording } from "@/utils/recordingService";
 import { getCurrentUser } from "@/utils/auth";
 
+interface ScheduleConfig {
+  startTime: string;
+  endTime: string;
+  weekdays: boolean[];
+}
+
+interface UserSettings {
+  sensitivity: number;
+  detectionMode: string;
+  schedule?: ScheduleConfig;
+  alertTypes?: {
+    vibration?: boolean;
+    sound?: boolean;
+    visual?: boolean;
+  };
+}
+
+interface DetectedSoundEvent {
+  timestamp: number;
+  type: "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal";
+}
+
 export const useTrackingSession = () => {
   const navigate = useNavigate();
   const [isTracking, setIsTracking] = useState(false);
@@ -36,10 +58,7 @@ export const useTrackingSession = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [recordingData, setRecordingData] = useState<Blob | null>(null);
   const [shouldRedirect, setShouldRedirect] = useState(false);
-  const [detectedSoundEvents, setDetectedSoundEvents] = useState<Array<{
-    timestamp: number;
-    type: "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal";
-  }>>([]);
+  const [detectedSoundEvents, setDetectedSoundEvents] = useState<DetectedSoundEvent[]>([]);
 
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -74,14 +93,17 @@ export const useTrackingSession = () => {
   }, []);
 
   const checkAutoSchedule = () => {
-    const settings = getUserSettings();
+    const settings = getUserSettings() as UserSettings;
     
     if (settings.detectionMode !== "auto") return;
     
     if (!settings.schedule || !Array.isArray(settings.schedule.weekdays) || settings.schedule.weekdays.length !== 7) {
       console.error("Invalid weekdays array, using defaults");
-      settings.schedule = settings.schedule || {};
-      settings.schedule.weekdays = [true, true, true, true, true, true, true];
+      settings.schedule = {
+        startTime: settings.schedule?.startTime || "22:00",
+        endTime: settings.schedule?.endTime || "07:00",
+        weekdays: [true, true, true, true, true, true, true]
+      };
     }
     
     const now = new Date();
@@ -128,8 +150,6 @@ export const useTrackingSession = () => {
         console.log("Detection system initialized successfully");
         
         try {
-          // Request microphone with explicit permissions and optimal settings
-          // Try multiple approaches to ensure microphone access works
           await navigator.mediaDevices.getUserMedia({ audio: true });
           
           const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -165,7 +185,6 @@ export const useTrackingSession = () => {
         } catch (error) {
           console.error("Error setting up audio recording:", error);
           
-          // Try a simpler microphone request as a fallback
           try {
             const simpleStream = await navigator.mediaDevices.getUserMedia({ 
               audio: true 
@@ -226,7 +245,6 @@ export const useTrackingSession = () => {
     const setupRealTimeDetection = async () => {
       try {
         if (detectionMode === "real") {
-          // Try to start listening with multiple retries for improved microphone access
           let retries = 0;
           let started = false;
           
@@ -249,7 +267,7 @@ export const useTrackingSession = () => {
             
             startContinuousDetection((result) => {
               handleDetectionResult(result);
-            }, 800); // Reduced for more responsive detection
+            }, 800);
           } else {
             setMicPermission(false);
             setDetectionMode("simulation");
@@ -258,7 +276,6 @@ export const useTrackingSession = () => {
               icon: <AlertTriangle className="h-4 w-4" />,
             });
             
-            // Start simulation mode since real detection failed
             const simulationInterval = setInterval(() => {
               const result = generateTestApneaEvent();
               handleDetectionResult(result);
@@ -304,7 +321,6 @@ export const useTrackingSession = () => {
         type: "normal" as "snoring" | "coughing" | "gasping" | "pausedBreathing" | "normal"
       };
       
-      // Only track meaningful events - focus on apnea indicators
       if (result.detectedSounds.pausedBreathing) {
         newEvent.type = "pausedBreathing";
         setDetectedSoundEvents(prev => {
@@ -331,7 +347,6 @@ export const useTrackingSession = () => {
     } else if (result.confidence > 0.15) {
       setApneaStatus("warning");
       
-      // Only show apnea-related alerts, not other sound notifications
       if (result.pattern === "interrupted") {
         toast.info(
           <div className="flex flex-col">
@@ -377,7 +392,6 @@ export const useTrackingSession = () => {
         navigator.vibrate(severity === "severe" ? [200, 100, 200, 100, 200] : [100, 50, 100, 50, 100]);
       }
       
-      // Create alert sound
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
       const oscillator1 = audioContext.createOscillator();
@@ -520,10 +534,8 @@ export const useTrackingSession = () => {
     }
   };
 
-  // Effect to handle delayed navigation
   useEffect(() => {
     if (shouldRedirect) {
-      // Wait a moment for any processing to complete
       const redirectTimer = setTimeout(() => {
         navigate("/");
       }, 1500);
@@ -548,7 +560,7 @@ export const useTrackingSession = () => {
     recordingData,
     detectedSoundEvents,
     mediaRecorder,
-    startTracking,
+    startTracking: () => startTracking(false),
     stopTracking,
     initializeDetectionSystem,
   };
