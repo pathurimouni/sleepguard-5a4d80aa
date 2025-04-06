@@ -1,3 +1,4 @@
+
 import { AudioAnalysisResult } from "./types";
 
 // Audio context and analysis variables
@@ -31,9 +32,10 @@ export const initializeDetection = async (): Promise<boolean> => {
     
     // Create AudioContext - simplified to avoid complex union type
     if (typeof window !== 'undefined') {
-      // Directly use AudioContext to avoid complex union types
-      audioContext = new (window.AudioContext || 
-        (window as any).webkitAudioContext)();
+      // Use a type assertion to avoid the complex union type
+      const AudioContextClass = window.AudioContext || 
+        (window as any).webkitAudioContext;
+      audioContext = new AudioContextClass();
     } else {
       console.error("Window object not available");
       return false;

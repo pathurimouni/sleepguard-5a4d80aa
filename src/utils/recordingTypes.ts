@@ -14,7 +14,7 @@ export interface BreathingRecording {
   created_at?: string;
   recording_type?: 'breathing' | 'live';
   recording_file_path: string;
-  recording_source?: string;
+  recording_source: string; // Explicitly making this required instead of optional
 }
 
 export interface ApneaAnalysis {

@@ -56,7 +56,8 @@ export const uploadBreathingRecording = async (
     const recordingData: BreathingRecordingInsert = {
       user_id: userId,
       recording_file_path: filePath,
-      duration: duration
+      duration: duration,
+      recording_source: 'breathing'
     };
     
     const { data, error: recordingError } = await supabase
