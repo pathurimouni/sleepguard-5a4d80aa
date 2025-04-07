@@ -9,6 +9,71 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_models: {
+        Row: {
+          accuracy: number
+          architecture: string
+          created_at: string
+          description: string | null
+          file_path: string
+          file_size: number
+          id: string
+          is_active: boolean
+          model_type: string
+          name: string
+          parameters: number
+          status: string
+          trained_by: string
+          training_dataset_id: string | null
+          training_time: number | null
+          validation_results: Json | null
+        }
+        Insert: {
+          accuracy: number
+          architecture: string
+          created_at?: string
+          description?: string | null
+          file_path: string
+          file_size: number
+          id?: string
+          is_active?: boolean
+          model_type: string
+          name: string
+          parameters: number
+          status: string
+          trained_by: string
+          training_dataset_id?: string | null
+          training_time?: number | null
+          validation_results?: Json | null
+        }
+        Update: {
+          accuracy?: number
+          architecture?: string
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          file_size?: number
+          id?: string
+          is_active?: boolean
+          model_type?: string
+          name?: string
+          parameters?: number
+          status?: string
+          trained_by?: string
+          training_dataset_id?: string | null
+          training_time?: number | null
+          validation_results?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_models_training_dataset_id_fkey"
+            columns: ["training_dataset_id"]
+            isOneToOne: false
+            referencedRelation: "training_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       apnea_analysis: {
         Row: {
           analysis_date: string
@@ -74,6 +139,83 @@ export type Database = {
         }
         Relationships: []
       }
+      detection_events: {
+        Row: {
+          confidence: number
+          duration: number
+          feature_data: Json | null
+          id: string
+          label: string
+          session_id: string
+          timestamp: string
+        }
+        Insert: {
+          confidence: number
+          duration?: number
+          feature_data?: Json | null
+          id?: string
+          label: string
+          session_id: string
+          timestamp?: string
+        }
+        Update: {
+          confidence?: number
+          duration?: number
+          feature_data?: Json | null
+          id?: string
+          label?: string
+          session_id?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "detection_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "detection_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      detection_sessions: {
+        Row: {
+          apnea_count: number
+          average_confidence: number
+          duration: number | null
+          end_time: string | null
+          id: string
+          normal_count: number
+          notes: string | null
+          severity_score: number
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          apnea_count?: number
+          average_confidence?: number
+          duration?: number | null
+          end_time?: string | null
+          id?: string
+          normal_count?: number
+          notes?: string | null
+          severity_score?: number
+          start_time?: string
+          user_id: string
+        }
+        Update: {
+          apnea_count?: number
+          average_confidence?: number
+          duration?: number | null
+          end_time?: string | null
+          id?: string
+          normal_count?: number
+          notes?: string | null
+          severity_score?: number
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -92,6 +234,45 @@ export type Database = {
           id?: string
           updated_at?: string | null
           username?: string | null
+        }
+        Relationships: []
+      }
+      training_datasets: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          is_public: boolean
+          labels: Json
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          file_path: string
+          file_size: number
+          file_type: string
+          id?: string
+          is_public?: boolean
+          labels?: Json
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          is_public?: boolean
+          labels?: Json
+          name?: string
         }
         Relationships: []
       }

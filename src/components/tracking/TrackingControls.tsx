@@ -1,7 +1,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Play, Pause } from "lucide-react";
+import { Play, Square } from "lucide-react";
 import ActionButton from "../ActionButton";
 
 interface TrackingControlsProps {
@@ -29,7 +29,7 @@ const TrackingControls: React.FC<TrackingControlsProps> = ({
           variant="destructive"
           size="lg"
           onClick={stopTracking}
-          icon={<Pause size={18} />}
+          icon={<Square size={18} />}
           disabled={isUploading}
         >
           {isUploading ? "Saving..." : "Stop Tracking"}

@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
-  Mic, MicOff, Play, Stop, Download, AlertTriangle, 
+  Mic, MicOff, Play, Square, Download, AlertTriangle, 
   Save, FileText, BarChart2, Loader2, Wand2
 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,7 +23,6 @@ import {
   setSensitivity
 } from "@/utils/apneaDetection/core";
 
-// Interfaces
 interface AudioVisualizerProps {
   isRecording: boolean;
   audioData: number[];
@@ -50,7 +48,6 @@ interface DetectionEventData {
   duration?: number;
 }
 
-// Audio Visualizer Component
 const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ isRecording, audioData }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -61,10 +58,8 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ isRecording, audioDat
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Draw waveform
     const width = canvas.width;
     const height = canvas.height;
     const barWidth = width / audioData.length;
@@ -92,7 +87,6 @@ const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ isRecording, audioDat
   );
 };
 
-// Detection Timeline Component
 const DetectionTimeline: React.FC<{ events: DetectionEventData[] }> = ({ events }) => {
   return (
     <div className="w-full mt-4">
@@ -125,7 +119,6 @@ const DetectionTimeline: React.FC<{ events: DetectionEventData[] }> = ({ events 
   );
 };
 
-// Sleep Apnea Detection Page
 const Detection: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any | null>(null);
@@ -159,7 +152,6 @@ const Detection: React.FC = () => {
   const sessionIntervalRef = useRef<number | null>(null);
   const detectionIntervalRef = useRef<number | null>(null);
   
-  // Initialize the page
   useEffect(() => {
     const init = async () => {
       try {
@@ -172,7 +164,6 @@ const Detection: React.FC = () => {
         
         setUser(currentUser);
         
-        // Check if user is admin (for dataset access)
         try {
           const { data } = await fetch(
             `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/rest/v1/user_roles?user_id=eq.${currentUser.id}&role=eq.admin`,
@@ -189,15 +180,11 @@ const Detection: React.FC = () => {
           console.error("Error checking admin status:", error);
         }
         
-        // Initialize the CNN model
         await loadModel();
         
-        // Initialize the audio detection
         await initializeDetection();
         
-        // Set default sensitivity
         setSensitivity(5);
-        
       } catch (error) {
         console.error("Error initializing detection page:", error);
       }
@@ -206,7 +193,6 @@ const Detection: React.FC = () => {
     init();
     
     return () => {
-      // Clean up resources
       stopRecording();
       stopDetection();
       
@@ -220,7 +206,6 @@ const Detection: React.FC = () => {
     };
   }, []);
   
-  // Update elapsed time
   useEffect(() => {
     if (stats.startTime && isDetecting) {
       sessionIntervalRef.current = window.setInterval(() => {
@@ -237,11 +222,9 @@ const Detection: React.FC = () => {
     };
   }, [stats.startTime, isDetecting]);
   
-  // Request microphone access
   const requestMicPermission = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Stop the stream immediately after getting permission
       stream.getTracks().forEach(track => track.stop());
       
       setMicPermission(true);
@@ -252,16 +235,13 @@ const Detection: React.FC = () => {
     }
   };
   
-  // Initialize audio analysis
   const initAudioAnalysis = async () => {
     if (!micPermission) return false;
     
     try {
-      // Create AudioContext
       audioContextRef.current = new (window.AudioContext || 
         (window as any).webkitAudioContext)();
       
-      // Get user media stream
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: false,
@@ -270,12 +250,10 @@ const Detection: React.FC = () => {
         } 
       });
       
-      // Create MediaRecorder
       const recorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm'
       });
       
-      // Set up recorder event handlers
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           setRecordedChunks(prev => [...prev, event.data]);
@@ -284,7 +262,6 @@ const Detection: React.FC = () => {
       
       setMediaRecorder(recorder);
       
-      // Create analyzer
       const audioContext = audioContextRef.current;
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
@@ -303,28 +280,23 @@ const Detection: React.FC = () => {
     }
   };
   
-  // Start recording
   const startRecording = async () => {
     if (isRecording) return;
     
-    // Initialize if needed
     if (!analyserRef.current) {
       const initialized = await initAudioAnalysis();
       if (!initialized) return;
     }
     
-    // Start recording
     if (mediaRecorder && mediaRecorder.state !== 'recording') {
       setRecordedChunks([]);
-      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorder.start(1000);
       setIsRecording(true);
       
-      // Start visualizer animation
       animateVisualizer();
     }
   };
   
-  // Stop recording
   const stopRecording = () => {
     if (!isRecording) return;
     
@@ -334,27 +306,22 @@ const Detection: React.FC = () => {
     
     setIsRecording(false);
     
-    // Stop visualizer animation
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
   };
   
-  // Animate the audio visualizer
   const animateVisualizer = () => {
     if (!analyserRef.current || !dataArrayRef.current) return;
     
     const analyser = analyserRef.current;
     const dataArray = dataArrayRef.current;
     
-    // Get data for visualization
     analyser.getByteTimeDomainData(dataArray);
     
-    // Convert Uint8Array to normalized number array for visualization
     const normalized = Array.from(dataArray).map(val => (val - 128) / 128);
     
-    // Take every nth value to reduce data size
     const step = Math.ceil(normalized.length / 50);
     const visualData = [];
     for (let i = 0; i < normalized.length; i += step) {
@@ -363,31 +330,26 @@ const Detection: React.FC = () => {
     
     setAudioData(visualData);
     
-    // Continue animation
     animationRef.current = requestAnimationFrame(animateVisualizer);
   };
   
-  // Save recording
   const saveRecording = async () => {
     if (recordedChunks.length === 0) {
       toast.error("No recording available to save");
       return;
     }
     
-    // Create blob from recorded chunks
     const blob = new Blob(recordedChunks, { type: 'audio/webm' });
     
     try {
       setIsProcessing(true);
       
-      // Preprocess the audio
       const processedAudio = await preprocessAudio(blob, {
         trimSilence: true,
         normalizeVolume: true,
         featureExtraction: 'melspectrogram'
       });
       
-      // Save as WAV file
       saveAudioToWav(processedAudio.buffer, `apnea_recording_${Date.now()}.wav`);
       
       toast.success("Recording saved successfully");
@@ -399,12 +361,10 @@ const Detection: React.FC = () => {
     }
   };
   
-  // Start continuous detection
   const startDetection = async () => {
     if (isDetecting) return;
     
     try {
-      // Start audio listening
       const listeningStarted = await startListening();
       
       if (!listeningStarted) {
@@ -412,7 +372,6 @@ const Detection: React.FC = () => {
         return;
       }
       
-      // Create a new detection session
       const sessionId = await createDetectionSession(user.id);
       
       if (!sessionId) {
@@ -421,7 +380,6 @@ const Detection: React.FC = () => {
         return;
       }
       
-      // Initialize detection state
       setIsDetecting(true);
       setDetectionEvents([]);
       setStats({
@@ -438,7 +396,6 @@ const Detection: React.FC = () => {
       setCurrentDetection(null);
       setConfidenceLevel(0);
       
-      // Start detection interval
       detectionIntervalRef.current = window.setInterval(async () => {
         const { audioContext, analyser, dataArray, rawTimeData } = getAudioComponents();
         
@@ -446,31 +403,25 @@ const Detection: React.FC = () => {
           return;
         }
         
-        // Get audio data
         analyser.getByteFrequencyData(dataArray);
         analyser.getFloatTimeDomainData(rawTimeData);
         
-        // Create a temporary buffer from the raw audio data
         const tempBuffer = audioContext!.createBuffer(1, rawTimeData.length, audioContext!.sampleRate);
         tempBuffer.getChannelData(0).set(rawTimeData);
         
-        // Preprocess the audio
         const tempBlob = await audioBufferToBlobAsync(tempBuffer);
         const processedAudio = await preprocessAudio(tempBlob, {
-          trimSilence: false, // Don't trim for real-time analysis
+          trimSilence: false,
           normalizeVolume: true,
           featureExtraction: 'melspectrogram'
         });
         
-        // Run detection
         const prediction = await detectApnea(processedAudio);
         
         if (prediction) {
-          // Update UI with detection results
           setCurrentDetection(prediction.label);
           setConfidenceLevel(prediction.confidence);
           
-          // Add to events list
           const newEvent: DetectionEventData = {
             timestamp: new Date(prediction.timestamp),
             label: prediction.label,
@@ -479,7 +430,6 @@ const Detection: React.FC = () => {
           
           setDetectionEvents(prev => [...prev, newEvent]);
           
-          // Update stats
           setStats(prevStats => {
             const newApneaCount = prediction.label === 'apnea' 
               ? prevStats.apneaCount + 1 
@@ -494,13 +444,11 @@ const Detection: React.FC = () => {
               ? (newApneaCount / newTotalEvents) * 100 
               : 0;
               
-            // Calculate average confidence
             const newAverageConfidence = (
               (prevStats.averageConfidence * (newTotalEvents - 1)) + 
               prediction.confidence
             ) / newTotalEvents;
             
-            // Calculate severity score (0-100)
             const newSeverityScore = Math.min(
               100, 
               (newApneaPercentage * 0.7) + (newAverageConfidence * 30)
@@ -517,12 +465,11 @@ const Detection: React.FC = () => {
             };
           });
           
-          // Log event to database
           if (stats.sessionId) {
             await logDetectionEvent(stats.sessionId, prediction);
           }
         }
-      }, 2000); // Check every 2 seconds
+      }, 2000);
       
       toast.success("Apnea detection started");
     } catch (error) {
@@ -531,20 +478,16 @@ const Detection: React.FC = () => {
     }
   };
   
-  // Stop detection
   const stopDetection = async () => {
     if (!isDetecting) return;
     
-    // Stop detection interval
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
       detectionIntervalRef.current = null;
     }
     
-    // Stop audio listening
     stopListening();
     
-    // Update database session
     if (stats.sessionId) {
       const sessionStats = {
         apneaCount: stats.apneaCount,
@@ -560,27 +503,20 @@ const Detection: React.FC = () => {
     toast.success("Apnea detection stopped");
   };
   
-  // Helper to convert AudioBuffer to Blob
   const audioBufferToBlobAsync = async (buffer: AudioBuffer): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       try {
-        // Create a temporary OfflineAudioContext
         const offlineContext = new OfflineAudioContext(
           buffer.numberOfChannels,
           buffer.length,
           buffer.sampleRate
         );
         
-        // Create a buffer source
         const source = offlineContext.createBufferSource();
         source.buffer = buffer;
         source.connect(offlineContext.destination);
         
-        // Start rendering
-        source.start(0);
-        
         offlineContext.startRendering().then(renderedBuffer => {
-          // Convert rendered buffer to WAV
           const wavBlob = audioBufferToWav(renderedBuffer);
           resolve(wavBlob);
         }).catch(err => {
@@ -592,30 +528,39 @@ const Detection: React.FC = () => {
     });
   };
   
-  // Convert AudioBuffer to WAV
   const audioBufferToWav = (buffer: AudioBuffer): Blob => {
-    // Number of channels
     const numChannels = buffer.numberOfChannels;
-    
-    // Get channel data
     const channels = [];
     for (let i = 0; i < numChannels; i++) {
       channels.push(buffer.getChannelData(i));
     }
     
-    // Interleaved
     const interleaved = numChannels === 2
       ? interleave(channels[0], channels[1])
       : channels[0];
     
-    // Create buffer
-    const dataView = encodeWAV(interleaved, buffer.sampleRate, numChannels);
-    const audioBlob = new Blob([dataView], { type: 'audio/wav' });
+    const buffer = new ArrayBuffer(44 + interleaved.length * 2);
+    const view = new DataView(buffer);
     
-    return audioBlob;
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + interleaved.length * 2, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, buffer.sampleRate, true);
+    view.setUint32(28, buffer.sampleRate * 4, true);
+    view.setUint16(32, numChannels * 2, true);
+    view.setUint16(34, 16, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, interleaved.length * 2, true);
+    
+    floatTo16BitPCM(view, 44, interleaved);
+    
+    return new Blob([view], { type: 'audio/wav' });
   };
   
-  // Interleave two channels
   const interleave = (leftChannel: Float32Array, rightChannel: Float32Array): Float32Array => {
     const length = leftChannel.length + rightChannel.length;
     const result = new Float32Array(length);
@@ -631,56 +576,6 @@ const Detection: React.FC = () => {
     return result;
   };
   
-  // Encode as WAV
-  const encodeWAV = (
-    samples: Float32Array, 
-    sampleRate: number, 
-    numChannels: number
-  ): DataView => {
-    const buffer = new ArrayBuffer(44 + samples.length * 2);
-    const view = new DataView(buffer);
-    
-    // RIFF identifier
-    writeString(view, 0, 'RIFF');
-    // RIFF chunk length
-    view.setUint32(4, 36 + samples.length * 2, true);
-    // RIFF type
-    writeString(view, 8, 'WAVE');
-    // format chunk identifier
-    writeString(view, 12, 'fmt ');
-    // format chunk length
-    view.setUint32(16, 16, true);
-    // sample format (raw)
-    view.setUint16(20, 1, true);
-    // channel count
-    view.setUint16(22, numChannels, true);
-    // sample rate
-    view.setUint32(24, sampleRate, true);
-    // byte rate (sample rate * block align)
-    view.setUint32(28, sampleRate * 4, true);
-    // block align (channel count * bytes per sample)
-    view.setUint16(32, numChannels * 2, true);
-    // bits per sample
-    view.setUint16(34, 16, true);
-    // data chunk identifier
-    writeString(view, 36, 'data');
-    // data chunk length
-    view.setUint32(40, samples.length * 2, true);
-    
-    // Write the PCM samples
-    floatTo16BitPCM(view, 44, samples);
-    
-    return view;
-  };
-  
-  // Write a string to a DataView
-  const writeString = (view: DataView, offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-  
-  // Convert floating point to 16-bit PCM
   const floatTo16BitPCM = (output: DataView, offset: number, input: Float32Array) => {
     for (let i = 0; i < input.length; i++, offset += 2) {
       const s = Math.max(-1, Math.min(1, input[i]));
@@ -688,7 +583,6 @@ const Detection: React.FC = () => {
     }
   };
   
-  // Format time
   const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -701,7 +595,6 @@ const Detection: React.FC = () => {
     ].join(':');
   };
   
-  // Export session report
   const exportReport = async () => {
     if (!stats.sessionId) {
       toast.error("No active session to export");
@@ -709,7 +602,6 @@ const Detection: React.FC = () => {
     }
     
     try {
-      // Get complete session stats from database
       const sessionData = await getSessionStats(stats.sessionId);
       
       if (!sessionData) {
@@ -717,15 +609,11 @@ const Detection: React.FC = () => {
         return;
       }
       
-      // Format data for PDF
-      // In a real implementation, you'd use jsPDF or a similar library
       const jsonData = JSON.stringify(sessionData, null, 2);
       
-      // Create a blob with the data
       const blob = new Blob([jsonData], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       
-      // Create a link and trigger download
       const link = document.createElement('a');
       link.href = url;
       link.download = `apnea_report_${stats.sessionId}.json`;
@@ -740,12 +628,10 @@ const Detection: React.FC = () => {
     }
   };
   
-  // View all sessions
   const viewAllSessions = () => {
     navigate("/analytics");
   };
   
-  // Render the page
   return (
     <PageTransition>
       <div className="page-container pt-8 md:pt-16 pb-24">
@@ -780,7 +666,6 @@ const Detection: React.FC = () => {
               transition={{ delay: 0.2 }}
               className="space-y-6"
             >
-              {/* Status and controls */}
               <Card className="p-6">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-4">
                   <div>
@@ -799,7 +684,7 @@ const Detection: React.FC = () => {
                     >
                       {isRecording ? (
                         <>
-                          <Stop size={16} />
+                          <Square size={16} />
                           Stop Recording
                         </>
                       ) : (
@@ -831,14 +716,12 @@ const Detection: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Audio visualizer */}
                 <AudioVisualizer 
                   isRecording={isRecording} 
                   audioData={audioData} 
                 />
               </Card>
               
-              {/* Detection controls and results */}
               <Card className="p-6">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-4">
                   <div>
@@ -860,7 +743,7 @@ const Detection: React.FC = () => {
                     >
                       {isDetecting ? (
                         <>
-                          <Stop size={16} />
+                          <Square size={16} />
                           Stop Detection
                         </>
                       ) : (
@@ -883,7 +766,6 @@ const Detection: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Current detection status */}
                 {isDetecting && (
                   <div className="mb-4 space-y-4">
                     <div className="flex items-center gap-4">
@@ -910,36 +792,30 @@ const Detection: React.FC = () => {
                       </div>
                     </div>
                     
-                    {/* Confidence meter */}
-                    {currentDetection && (
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span>Low Confidence</span>
-                          <span>High Confidence</span>
-                        </div>
-                        <Progress 
-                          value={confidenceLevel * 100} 
-                          className="h-2" 
-                        />
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>Low Confidence</span>
+                        <span>High Confidence</span>
                       </div>
-                    )}
+                      <Progress 
+                        value={confidenceLevel * 100} 
+                        className="h-2" 
+                      />
+                    </div>
                   </div>
                 )}
                 
-                {/* Detection visualization */}
                 <BreathingVisualizer 
                   isTracking={isDetecting} 
-                  status={currentDetection === 'apnea' ? 'missing' : 'normal'} 
+                  status={currentDetection === 'apnea' ? 'warning' : 'normal'} 
                   detectedEvents={[]}
                 />
                 
-                {/* Timeline view */}
                 {detectionEvents.length > 0 && (
                   <DetectionTimeline events={detectionEvents} />
                 )}
               </Card>
               
-              {/* Statistics panel */}
               {(isDetecting || stats.totalEvents > 0) && (
                 <Card className="p-6">
                   <h2 className="text-xl font-semibold mb-4">Session Statistics</h2>
@@ -970,7 +846,6 @@ const Detection: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Severity indicator */}
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between items-center">
                       <h3 className="text-sm font-medium">Severity Level</h3>
@@ -1015,7 +890,6 @@ const Detection: React.FC = () => {
                 </Card>
               )}
               
-              {/* Admin panel for dataset management */}
               {isAdmin && (
                 <motion.div
                   initial={{ opacity: 0 }}
