@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -22,22 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { getCurrentUser } from "@/utils/auth";
 import { supabase } from "@/integrations/supabase/client";
-
-interface Dataset {
-  id: string;
-  name: string;
-  description: string | null;
-  file_path: string;
-  file_type: string;
-  file_size: number;
-  created_at: string;
-  is_public: boolean;
-  labels: {
-    apnea: number;
-    normal: number;
-  };
-  created_by: string;
-}
+import { Dataset } from "@/integrations/supabase/customTypes";
 
 interface FileUploadState {
   file: File | null;
@@ -67,7 +51,6 @@ const AdminDatasets: React.FC = () => {
   });
   const [deleteDatasetId, setDeleteDatasetId] = useState<string | null>(null);
   
-  // Check admin access and load datasets
   useEffect(() => {
     const checkAccess = async () => {
       try {
@@ -82,7 +65,6 @@ const AdminDatasets: React.FC = () => {
         
         setUser(currentUser);
         
-        // Check if user is admin
         const { data, error } = await supabase
           .from('user_roles')
           .select('*')
@@ -98,7 +80,6 @@ const AdminDatasets: React.FC = () => {
         
         setIsAdmin(true);
         
-        // Load datasets
         await loadDatasets();
       } catch (error) {
         console.error("Error checking access:", error);
@@ -112,7 +93,6 @@ const AdminDatasets: React.FC = () => {
     checkAccess();
   }, []);
   
-  // Filter datasets when search term changes
   useEffect(() => {
     if (searchTerm.trim() === "") {
       setFilteredDatasets(datasets);
@@ -128,7 +108,6 @@ const AdminDatasets: React.FC = () => {
     setFilteredDatasets(filtered);
   }, [searchTerm, datasets]);
   
-  // Load datasets
   const loadDatasets = async () => {
     try {
       setIsLoading(true);
@@ -154,15 +133,13 @@ const AdminDatasets: React.FC = () => {
     }
   };
   
-  // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
     const file = files[0];
     
-    // Auto-generate name from filename
-    const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+    const fileName = file.name.replace(/\.[^/.]+$/, "");
     const formattedName = fileName
       .replace(/[_-]/g, " ")
       .replace(/\b\w/g, c => c.toUpperCase());
@@ -174,7 +151,6 @@ const AdminDatasets: React.FC = () => {
     }));
   };
   
-  // Handle upload form change
   const handleUploadFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -185,7 +161,6 @@ const AdminDatasets: React.FC = () => {
     }));
   };
   
-  // Handle visibility toggle
   const handleVisibilityToggle = () => {
     setUploadState(prev => ({
       ...prev,
@@ -193,7 +168,6 @@ const AdminDatasets: React.FC = () => {
     }));
   };
   
-  // Upload dataset
   const uploadDataset = async () => {
     const { file, name, description, isPublic } = uploadState;
     
@@ -214,7 +188,6 @@ const AdminDatasets: React.FC = () => {
         progress: 0
       }));
       
-      // Upload file to storage
       const filePath = `datasets/${Date.now()}_${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('training_data')
@@ -234,14 +207,12 @@ const AdminDatasets: React.FC = () => {
         progress: 50
       }));
       
-      // Get file URL
       const { data: urlData } = await supabase.storage
         .from('training_data')
-        .createSignedUrl(filePath, 31536000); // 1 year expiry
+        .createSignedUrl(filePath, 31536000);
       
       const fileUrl = urlData?.signedUrl;
       
-      // Create dataset record
       const { data: datasetData, error: datasetError } = await supabase
         .from('training_datasets')
         .insert({
@@ -270,7 +241,6 @@ const AdminDatasets: React.FC = () => {
         progress: 100
       }));
       
-      // Reset form and close dialog
       setTimeout(() => {
         setUploadState({
           file: null,
@@ -283,12 +253,10 @@ const AdminDatasets: React.FC = () => {
         
         setShowUploadDialog(false);
         
-        // Reload datasets
         loadDatasets();
         
         toast.success("Dataset uploaded successfully");
       }, 1000);
-      
     } catch (error) {
       console.error("Error uploading dataset:", error);
       toast.error("Failed to upload dataset");
@@ -300,12 +268,10 @@ const AdminDatasets: React.FC = () => {
     }
   };
   
-  // Delete dataset
   const deleteDataset = async () => {
     if (!deleteDatasetId) return;
     
     try {
-      // Get dataset info
       const { data: datasetData, error: datasetError } = await supabase
         .from('training_datasets')
         .select('file_path')
@@ -318,7 +284,6 @@ const AdminDatasets: React.FC = () => {
         return;
       }
       
-      // Delete file from storage
       const { error: deleteFileError } = await supabase.storage
         .from('training_data')
         .remove([datasetData.file_path]);
@@ -328,7 +293,6 @@ const AdminDatasets: React.FC = () => {
         toast.error("Failed to delete dataset file");
       }
       
-      // Delete dataset record
       const { error: deleteRecordError } = await supabase
         .from('training_datasets')
         .delete()
@@ -340,10 +304,8 @@ const AdminDatasets: React.FC = () => {
         return;
       }
       
-      // Clear delete state
       setDeleteDatasetId(null);
       
-      // Reload datasets
       loadDatasets();
       
       toast.success("Dataset deleted successfully");
@@ -353,7 +315,6 @@ const AdminDatasets: React.FC = () => {
     }
   };
   
-  // Format file size
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -361,10 +322,8 @@ const AdminDatasets: React.FC = () => {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   };
   
-  // Download dataset
   const downloadDataset = async (dataset: Dataset) => {
     try {
-      // Get download URL
       const { data, error } = await supabase.storage
         .from('training_data')
         .createSignedUrl(dataset.file_path, 3600);
@@ -375,7 +334,6 @@ const AdminDatasets: React.FC = () => {
         return;
       }
       
-      // Open download link
       window.open(data.signedUrl, '_blank');
     } catch (error) {
       console.error("Error downloading dataset:", error);
@@ -383,7 +341,6 @@ const AdminDatasets: React.FC = () => {
     }
   };
   
-  // Render upload dialog
   const renderUploadDialog = () => {
     return (
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
@@ -511,7 +468,6 @@ const AdminDatasets: React.FC = () => {
     );
   };
   
-  // Render delete confirmation dialog
   const renderDeleteDialog = () => {
     return (
       <Dialog 
@@ -554,7 +510,6 @@ const AdminDatasets: React.FC = () => {
     );
   };
   
-  // Render dataset cards
   const renderDatasetCards = () => {
     if (isLoading) {
       return (
@@ -638,7 +593,6 @@ const AdminDatasets: React.FC = () => {
     );
   };
   
-  // Main render
   return (
     <PageTransition>
       <div className="page-container pt-8 md:pt-16 pb-24">

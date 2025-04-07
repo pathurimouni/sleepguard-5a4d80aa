@@ -1,7 +1,5 @@
-
-import { toast } from "sonner";
-import { ProcessedAudio, prepareForCNN } from "./audioProcessing";
 import { supabase } from "@/integrations/supabase/client";
+import { DetectionSession, DetectionEvent } from "@/integrations/supabase/customTypes";
 
 // CNN Model interfaces
 export interface ModelMetadata {
@@ -268,81 +266,70 @@ export const createDetectionSession = async (userId: string): Promise<string | n
         average_confidence: 0,
         severity_score: 0
       })
-      .select('id')
+      .select()
       .single();
-    
-    if (error) {
-      console.error("Error creating detection session:", error);
+      
+    if (error || !data) {
+      console.error('Error creating detection session:', error);
       return null;
     }
     
     return data.id;
   } catch (error) {
-    console.error("Error in createDetectionSession:", error);
+    console.error('Error in createDetectionSession:', error);
     return null;
   }
 };
 
 // End a detection session
-export const endDetectionSession = async (
+export const finishDetectionSession = async (
   sessionId: string, 
-  stats: {
-    apneaCount: number;
-    normalCount: number;
-    averageConfidence: number;
-    severityScore: number;
-  }
+  duration: number,
+  apneaCount: number,
+  normalCount: number,
+  avgConfidence: number,
+  severityScore: number
 ): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('detection_sessions')
       .update({
         end_time: new Date().toISOString(),
-        duration: (new Date().getTime() - new Date(sessionId).getTime()) / 1000,
-        apnea_count: stats.apneaCount,
-        normal_count: stats.normalCount,
-        average_confidence: stats.averageConfidence,
-        severity_score: stats.severityScore
+        duration: duration,
+        apnea_count: apneaCount,
+        normal_count: normalCount,
+        average_confidence: avgConfidence,
+        severity_score: severityScore
       })
       .eq('id', sessionId);
-    
-    if (error) {
-      console.error("Error ending detection session:", error);
-      return false;
-    }
-    
-    return true;
+      
+    return !error;
   } catch (error) {
-    console.error("Error in endDetectionSession:", error);
+    console.error('Error in finishDetectionSession:', error);
     return false;
   }
 };
 
 // Log a detection event
-export const logDetectionEvent = async (
+export const addDetectionEvent = async (
   sessionId: string,
-  prediction: ModelPrediction,
-  duration: number = 0
+  isApnea: boolean,
+  confidence: number,
+  featureData: Record<string, any> = {}
 ): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('detection_events')
       .insert({
         session_id: sessionId,
-        timestamp: new Date(prediction.timestamp).toISOString(),
-        label: prediction.label,
-        confidence: prediction.confidence,
-        duration: duration
+        label: isApnea ? 'apnea' : 'normal',
+        confidence: confidence,
+        feature_data: featureData
       });
-    
-    if (error) {
-      console.error("Error logging detection event:", error);
-      return false;
-    }
-    
-    return true;
+      
+    return !error;
   } catch (error) {
-    console.error("Error in logDetectionEvent:", error);
+    console.error('Error in addDetectionEvent:', error);
     return false;
   }
 };
@@ -410,4 +397,78 @@ export const getSessionStats = async (sessionId: string): Promise<any> => {
     console.error("Error in getSessionStats:", error);
     return null;
   }
+};
+
+// Get session history for a user
+export const getDetectionHistoryForUser = async (
+  userId: string,
+  limit = 10,
+  offset = 0
+): Promise<{ sessions: DetectionSession[], events: DetectionEvent[][] }> => {
+  try {
+    // Fetch sessions
+    const { data: sessionData, error: sessionError } = await supabase
+      .from('detection_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('start_time', { ascending: false })
+      .range(offset, offset + limit - 1);
+    
+    if (sessionError) {
+      console.error('Error fetching detection sessions:', sessionError);
+      return { sessions: [], events: [] };
+    }
+    
+    const sessions = sessionData as DetectionSession[];
+    
+    // Fetch events for each session
+    const eventsPromises = sessions.map(async (session) => {
+      const { data: eventData, error: eventError } = await supabase
+        .from('detection_events')
+        .select('*')
+        .eq('session_id', session.id)
+        .order('timestamp', { ascending: true });
+        
+      if (eventError) {
+        console.error(`Error fetching events for session ${session.id}:`, eventError);
+        return [];
+      }
+      
+      return eventData as DetectionEvent[];
+    });
+    
+    const events = await Promise.all(eventsPromises);
+    
+    return { sessions, events };
+  } catch (error) {
+    console.error('Error in getDetectionHistoryForUser:', error);
+    return { sessions: [], events: [] };
+  }
+};
+
+// Count apnea events in a list of events
+export const countApneaEvents = (events: DetectionEvent[]): { apnea: number, normal: number } => {
+  const result = { apnea: 0, normal: 0 };
+  
+  events.forEach(event => {
+    if (event.label === 'apnea') {
+      result.apnea++;
+    } else if (event.label === 'normal') {
+      result.normal++;
+    }
+  });
+  
+  return result;
+};
+
+export default {
+  loadModel,
+  detectApnea,
+  getModelInfo,
+  createDetectionSession,
+  finishDetectionSession,
+  addDetectionEvent,
+  getSessionStats,
+  getDetectionHistoryForUser,
+  countApneaEvents
 };

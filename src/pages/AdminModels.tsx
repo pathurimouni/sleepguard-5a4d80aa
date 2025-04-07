@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -31,37 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCurrentUser } from "@/utils/auth";
 import { supabase } from "@/integrations/supabase/client";
-
-interface Dataset {
-  id: string;
-  name: string;
-  file_path: string;
-}
-
-interface Model {
-  id: string;
-  name: string;
-  description: string | null;
-  model_type: string;
-  architecture: string;
-  accuracy: number;
-  parameters: number;
-  file_path: string;
-  file_size: number;
-  created_at: string;
-  status: 'training' | 'ready' | 'failed';
-  is_active: boolean;
-  trained_by: string;
-  training_time: number | null;
-  training_dataset_id: string | null;
-  validation_results: {
-    accuracy: number;
-    precision: number;
-    recall: number;
-    f1_score: number;
-    confusion_matrix: number[][];
-  } | null;
-}
+import { Dataset, Model } from "@/integrations/supabase/customTypes";
 
 interface TrainingState {
   dataset: string;
@@ -96,7 +65,6 @@ const AdminModels: React.FC = () => {
   const [deleteModelId, setDeleteModelId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   
-  // Check admin access and load data
   useEffect(() => {
     const checkAccess = async () => {
       try {
@@ -111,7 +79,6 @@ const AdminModels: React.FC = () => {
         
         setUser(currentUser);
         
-        // Check if user is admin
         const { data, error } = await supabase
           .from('user_roles')
           .select('*')
@@ -127,7 +94,6 @@ const AdminModels: React.FC = () => {
         
         setIsAdmin(true);
         
-        // Load models and datasets
         await Promise.all([
           loadModels(),
           loadDatasets()
@@ -144,7 +110,6 @@ const AdminModels: React.FC = () => {
     checkAccess();
   }, []);
   
-  // Load models
   const loadModels = async () => {
     try {
       const { data, error } = await supabase
@@ -165,7 +130,6 @@ const AdminModels: React.FC = () => {
     }
   };
   
-  // Load datasets
   const loadDatasets = async () => {
     try {
       const { data, error } = await supabase
@@ -186,7 +150,6 @@ const AdminModels: React.FC = () => {
     }
   };
   
-  // Handle training form change
   const handleTrainingFormChange = (field: string, value: any) => {
     setTrainingState(prev => ({
       ...prev,
@@ -194,7 +157,6 @@ const AdminModels: React.FC = () => {
     }));
   };
   
-  // Start model training
   const startTraining = async () => {
     const { dataset, modelName, modelType, epochs, batchSize, learningRate } = trainingState;
     
@@ -215,7 +177,6 @@ const AdminModels: React.FC = () => {
         progress: 0
       }));
       
-      // Create model record
       const { data: modelData, error: modelError } = await supabase
         .from('ai_models')
         .insert({
@@ -249,7 +210,6 @@ const AdminModels: React.FC = () => {
       
       const modelId = modelData[0].id;
       
-      // Simulate training progress
       let progress = 0;
       const interval = setInterval(() => {
         progress += Math.random() * 5;
@@ -258,7 +218,6 @@ const AdminModels: React.FC = () => {
           progress = 100;
           clearInterval(interval);
           
-          // Update model record with completed training
           finishTraining(modelId);
         }
         
@@ -279,16 +238,13 @@ const AdminModels: React.FC = () => {
     }
   };
   
-  // Finish training simulation
   const finishTraining = async (modelId: string) => {
     try {
-      // Calculate fake metrics
       const accuracy = 0.85 + (Math.random() * 0.1);
       const precision = 0.82 + (Math.random() * 0.1);
       const recall = 0.79 + (Math.random() * 0.15);
       const f1_score = 2 * (precision * recall) / (precision + recall);
       
-      // Generate confusion matrix
       const truePositives = Math.floor(80 + (Math.random() * 15));
       const falseNegatives = Math.floor(10 + (Math.random() * 10));
       const falsePositives = Math.floor(15 + (Math.random() * 10));
@@ -299,7 +255,6 @@ const AdminModels: React.FC = () => {
         [falsePositives, trueNegatives]
       ];
       
-      // Update model record
       const { error: updateError } = await supabase
         .from('ai_models')
         .update({
@@ -325,7 +280,6 @@ const AdminModels: React.FC = () => {
         return;
       }
       
-      // Reset training state and close dialog
       setTimeout(() => {
         setTrainingState({
           dataset: "",
@@ -340,12 +294,10 @@ const AdminModels: React.FC = () => {
         
         setShowTrainingDialog(false);
         
-        // Reload models
         loadModels();
         
         toast.success("Model training completed successfully");
       }, 1000);
-      
     } catch (error) {
       console.error("Error finishing training:", error);
       toast.error("Failed to complete model training");
@@ -357,7 +309,6 @@ const AdminModels: React.FC = () => {
     }
   };
   
-  // Get architecture description
   const getArchitectureDescription = (modelType: string): string => {
     switch (modelType) {
       case 'cnn':
@@ -371,12 +322,10 @@ const AdminModels: React.FC = () => {
     }
   };
   
-  // Delete model
   const deleteModel = async () => {
     if (!deleteModelId) return;
     
     try {
-      // Delete model record
       const { error } = await supabase
         .from('ai_models')
         .delete()
@@ -388,10 +337,8 @@ const AdminModels: React.FC = () => {
         return;
       }
       
-      // Clear delete state
       setDeleteModelId(null);
       
-      // Reload models
       loadModels();
       
       toast.success("Model deleted successfully");
@@ -401,10 +348,8 @@ const AdminModels: React.FC = () => {
     }
   };
   
-  // Set active model
   const setActiveModel = async (modelId: string) => {
     try {
-      // Update all models to inactive
       const { error: resetError } = await supabase
         .from('ai_models')
         .update({ is_active: false })
@@ -416,7 +361,6 @@ const AdminModels: React.FC = () => {
         return;
       }
       
-      // Set the selected model to active
       const { error: updateError } = await supabase
         .from('ai_models')
         .update({ is_active: true })
@@ -428,7 +372,6 @@ const AdminModels: React.FC = () => {
         return;
       }
       
-      // Reload models
       loadModels();
       
       toast.success("Model activated successfully");
@@ -438,7 +381,6 @@ const AdminModels: React.FC = () => {
     }
   };
   
-  // Format file size
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -446,7 +388,6 @@ const AdminModels: React.FC = () => {
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   };
   
-  // Format training time
   const formatTrainingTime = (seconds: number | null): string => {
     if (!seconds) return "N/A";
     
@@ -461,7 +402,6 @@ const AdminModels: React.FC = () => {
     ].filter(Boolean).join(" ");
   };
   
-  // Render training dialog
   const renderTrainingDialog = () => {
     return (
       <Dialog open={showTrainingDialog} onOpenChange={setShowTrainingDialog}>
@@ -621,7 +561,6 @@ const AdminModels: React.FC = () => {
     );
   };
   
-  // Render delete confirmation dialog
   const renderDeleteDialog = () => {
     return (
       <Dialog 
@@ -664,7 +603,6 @@ const AdminModels: React.FC = () => {
     );
   };
   
-  // Render model details dialog
   const renderModelDetailsDialog = () => {
     if (!selectedModel) return null;
     
@@ -887,7 +825,6 @@ const AdminModels: React.FC = () => {
     );
   };
   
-  // Render models list
   const renderModels = () => {
     if (isLoading) {
       return (
@@ -990,7 +927,6 @@ const AdminModels: React.FC = () => {
     );
   };
   
-  // Main render
   return (
     <PageTransition>
       <div className="page-container pt-8 md:pt-16 pb-24">

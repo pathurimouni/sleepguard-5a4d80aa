@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -21,28 +20,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { getCurrentUser } from "@/utils/auth";
 import { supabase } from "@/integrations/supabase/client";
-
-interface DetectionSession {
-  id: string;
-  user_id: string;
-  start_time: string;
-  end_time: string | null;
-  duration: number | null;
-  apnea_count: number;
-  normal_count: number;
-  average_confidence: number;
-  severity_score: number;
-  notes: string | null;
-}
-
-interface DetectionEvent {
-  id: string;
-  session_id: string;
-  timestamp: string;
-  label: 'apnea' | 'normal';
-  confidence: number;
-  duration: number | null;
-}
+import { DetectionSession, DetectionEvent } from "@/integrations/supabase/customTypes";
 
 interface SessionWithEvents {
   session: DetectionSession;
@@ -58,7 +36,6 @@ const Analytics: React.FC = () => {
   const [isLoadingSession, setIsLoadingSession] = useState<boolean>(false);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('week');
   
-  // Fetch user and sessions
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -73,7 +50,6 @@ const Analytics: React.FC = () => {
         
         setUser(currentUser);
         
-        // Fetch sessions
         await fetchSessions(currentUser.id, timeRange);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -86,14 +62,12 @@ const Analytics: React.FC = () => {
     fetchData();
   }, []);
   
-  // Fetch sessions when time range changes
   useEffect(() => {
     if (user) {
       fetchSessions(user.id, timeRange);
     }
   }, [timeRange, user]);
   
-  // Fetch sessions for user
   const fetchSessions = async (userId: string, range: 'week' | 'month' | 'all') => {
     try {
       setIsLoading(true);
@@ -104,7 +78,6 @@ const Analytics: React.FC = () => {
         .eq('user_id', userId)
         .order('start_time', { ascending: false });
       
-      // Apply time filter
       if (range === 'week') {
         const lastWeek = new Date();
         lastWeek.setDate(lastWeek.getDate() - 7);
@@ -132,12 +105,10 @@ const Analytics: React.FC = () => {
     }
   };
   
-  // Load session details
   const loadSessionDetails = async (sessionId: string) => {
     try {
       setIsLoadingSession(true);
       
-      // Fetch session
       const { data: sessionData, error: sessionError } = await supabase
         .from('detection_sessions')
         .select('*')
@@ -150,7 +121,6 @@ const Analytics: React.FC = () => {
         return;
       }
       
-      // Fetch events
       const { data: eventsData, error: eventsError } = await supabase
         .from('detection_events')
         .select('*')
@@ -175,10 +145,8 @@ const Analytics: React.FC = () => {
     }
   };
   
-  // Export session data
   const exportSessionData = async (sessionId: string) => {
     try {
-      // Fetch complete session data
       const { data: sessionData, error: sessionError } = await supabase
         .from('detection_sessions')
         .select('*')
@@ -191,7 +159,6 @@ const Analytics: React.FC = () => {
         return;
       }
       
-      // Fetch events
       const { data: eventsData, error: eventsError } = await supabase
         .from('detection_events')
         .select('*')
@@ -204,7 +171,6 @@ const Analytics: React.FC = () => {
         return;
       }
       
-      // Prepare export data
       const exportData = {
         session: sessionData,
         events: eventsData || [],
@@ -212,11 +178,9 @@ const Analytics: React.FC = () => {
         user_id: user.id
       };
       
-      // Create JSON blob
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       
-      // Create download link
       const link = document.createElement('a');
       link.href = url;
       link.download = `apnea_session_${sessionId}.json`;
@@ -224,7 +188,6 @@ const Analytics: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       
-      // Cleanup
       URL.revokeObjectURL(url);
       
       toast.success("Session data exported successfully");
@@ -234,27 +197,21 @@ const Analytics: React.FC = () => {
     }
   };
   
-  // Calculate overall stats
   const calculateOverallStats = () => {
     if (sessions.length === 0) return null;
     
-    // Total duration
     const totalDuration = sessions.reduce((sum, session) => 
       sum + (session.duration || 0), 0);
     
-    // Total apnea events
     const totalApneaEvents = sessions.reduce((sum, session) => 
       sum + session.apnea_count, 0);
     
-    // Average severity score
     const avgSeverityScore = sessions.reduce((sum, session) => 
       sum + session.severity_score, 0) / sessions.length;
     
-    // Total normal events
     const totalNormalEvents = sessions.reduce((sum, session) => 
       sum + session.normal_count, 0);
     
-    // Apnea rate
     const totalEvents = totalApneaEvents + totalNormalEvents;
     const apneaRate = totalEvents > 0 
       ? (totalApneaEvents / totalEvents) * 100 
@@ -269,7 +226,6 @@ const Analytics: React.FC = () => {
     };
   };
   
-  // Format duration
   const formatDuration = (seconds: number | null): string => {
     if (seconds === null) return "N/A";
     
@@ -284,31 +240,26 @@ const Analytics: React.FC = () => {
     ].filter(Boolean).join(" ");
   };
   
-  // Format date
   const formatDate = (dateString: string): string => {
     return format(new Date(dateString), "MMM d, yyyy");
   };
   
-  // Format time
   const formatTime = (dateString: string): string => {
     return format(new Date(dateString), "h:mm a");
   };
   
-  // Get severity text
   const getSeverityText = (score: number): string => {
     if (score < 30) return "Mild";
     if (score < 60) return "Moderate";
     return "Severe";
   };
   
-  // Get severity color
   const getSeverityColor = (score: number): string => {
     if (score < 30) return "text-green-500";
     if (score < 60) return "text-yellow-500";
     return "text-red-500";
   };
   
-  // Render session list
   const renderSessions = () => {
     if (isLoading) {
       return (
@@ -379,7 +330,6 @@ const Analytics: React.FC = () => {
     );
   };
   
-  // Render session details
   const renderSessionDetails = () => {
     if (!selectedSession) return null;
     
@@ -442,7 +392,6 @@ const Analytics: React.FC = () => {
             </div>
           </div>
           
-          {/* Severity indicator */}
           <div className="space-y-2 mb-6">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-medium">Severity Level</h3>
@@ -464,7 +413,6 @@ const Analytics: React.FC = () => {
             </div>
           </div>
           
-          {/* Timeline */}
           {events.length > 0 ? (
             <div className="space-y-3">
               <h3 className="text-sm font-medium">Event Timeline</h3>
@@ -513,7 +461,6 @@ const Analytics: React.FC = () => {
           </div>
         </Card>
         
-        {/* Event details accordion */}
         {events.length > 0 && (
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Detection Events</h3>
@@ -573,7 +520,6 @@ const Analytics: React.FC = () => {
     );
   };
   
-  // Render overall statistics
   const renderOverallStats = () => {
     const stats = calculateOverallStats();
     
