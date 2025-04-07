@@ -41,12 +41,12 @@ export const initializeDetection = async (): Promise<boolean> => {
     }
     
     try {
-      audioProcessor = await import("@huggingface/transformers").then(module => {
-        return module.pipeline(
-          "automatic-speech-recognition",
-          "onnx-community/whisper-tiny.en",
-        );
-      });
+      // Import the pipeline function directly to avoid complex union type issues
+      const { pipeline } = await import("@huggingface/transformers");
+      audioProcessor = await pipeline(
+        "automatic-speech-recognition",
+        "onnx-community/whisper-tiny.en"
+      );
       console.log("Audio processing model loaded successfully");
     } catch (error) {
       console.error("Error loading audio model:", error);
