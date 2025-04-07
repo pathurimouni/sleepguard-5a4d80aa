@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { DetectionSession as DBDetectionSession, DetectionEvent as DBDetectionEvent } from "@/integrations/supabase/customTypes";
+import { DetectionSession, DetectionEvent } from "@/integrations/supabase/customTypes";
 import { toast } from "sonner";
+import { v4 as uuidv4 } from "uuid";
 
 // CNN Model interfaces
 export interface ModelMetadata {
@@ -464,19 +465,12 @@ export const getDetectionHistoryForUser = async (
   }
 };
 
-// Count apnea events in a list of events
-export const countApneaEvents = (events: DetectionEvent[]): { apnea: number, normal: number } => {
-  const result = { apnea: 0, normal: 0 };
+// Count apnea events from detection events array
+const countApneaEvents = (events: DetectionEvent[]): { apnea: number, normal: number } => {
+  const apnea = events.filter(event => event.label === 'apnea').length;
+  const normal = events.filter(event => event.label === 'normal').length;
   
-  events.forEach(event => {
-    if (event.label === 'apnea') {
-      result.apnea++;
-    } else if (event.label === 'normal') {
-      result.normal++;
-    }
-  });
-  
-  return result;
+  return { apnea, normal };
 };
 
 export default {

@@ -27,6 +27,7 @@ import ActionButton from "@/components/ActionButton";
 import { getCurrentUser } from "@/utils/auth";
 import { supabase } from "@/integrations/supabase/client";
 import cnnModel from "@/utils/cnnModel";
+import { DetectionEvent } from "@/integrations/supabase/customTypes";
 
 const Detection: React.FC = () => {
   const navigate = useNavigate();
