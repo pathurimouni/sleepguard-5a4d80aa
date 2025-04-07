@@ -123,7 +123,13 @@ const AdminModels: React.FC = () => {
         return;
       }
       
-      setModels(data || []);
+      const typedModels = data?.map(model => ({
+        ...model,
+        status: model.status as 'training' | 'ready' | 'failed',
+        validation_results: model.validation_results as Model['validation_results']
+      })) || [];
+      
+      setModels(typedModels);
     } catch (error) {
       console.error("Error in loadModels:", error);
       toast.error("Failed to load models");
@@ -134,7 +140,7 @@ const AdminModels: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('training_datasets')
-        .select('id, name, file_path')
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (error) {
@@ -143,7 +149,8 @@ const AdminModels: React.FC = () => {
         return;
       }
       
-      setDatasets(data || []);
+      const typedDatasets = data as Dataset[] || [];
+      setDatasets(typedDatasets);
     } catch (error) {
       console.error("Error in loadDatasets:", error);
       toast.error("Failed to load datasets");

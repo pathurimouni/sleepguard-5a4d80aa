@@ -3,6 +3,7 @@
 // Use this file alongside the auto-generated types.ts
 
 import { Database } from './types';
+import { Json } from './types';
 
 // Enhancement to include missing tables in types
 export interface EnhancedDatabase extends Database {

@@ -60,7 +60,7 @@ const Detection: React.FC = () => {
         navigate("/login");
         return;
       }
-      setUser(currentUser);
+      setUser(currentUser as any); // Type assertion to avoid type error
       
       // Fetch user profile
       await fetchUserProfile();
@@ -257,7 +257,7 @@ const Detection: React.FC = () => {
     
     try {
       // Calculate session metrics
-      const { apnea, normal } = await cnnModel.countApneaEventsForSession(sessionId);
+      const { apnea, normal } = await getDetectionEventsCount(sessionId);
       const totalEvents = apnea + normal;
       const avgConfidence = totalEvents > 0 ? (apnea * confidence) / totalEvents : 0;
       const severityScore = apnea * confidence;
@@ -288,6 +288,27 @@ const Detection: React.FC = () => {
     }
   };
   
+  // Helper function to get detection events count for a session
+  const getDetectionEventsCount = async (sessionId: string): Promise<{ apnea: number, normal: number }> => {
+    try {
+      // Get session events
+      const { data: eventsData, error: eventsError } = await supabase
+        .from('detection_events')
+        .select('*')
+        .eq('session_id', sessionId);
+      
+      if (eventsError) {
+        console.error("Error fetching events:", eventsError);
+        return { apnea: 0, normal: 0 };
+      }
+      
+      return cnnModel.countApneaEvents(eventsData as DetectionEvent[]);
+    } catch (error) {
+      console.error("Error in getDetectionEventsCount:", error);
+      return { apnea: 0, normal: 0 };
+    }
+  };
+  
   // Export audio as WAV
   const exportAsWav = (audioBuffer: AudioBuffer) => {
     // Create a new array with the proper data type
@@ -295,17 +316,17 @@ const Detection: React.FC = () => {
     const view = new DataView(wavBuffer);
     
     // Helper function to write strings to the buffer
-    const writeString = (view: DataView, offset: number, string: string) => {
+    function writeStringToBuffer(view: DataView, offset: number, string: string) {
       for (let i = 0; i < string.length; i++) {
         view.setUint8(offset + i, string.charCodeAt(i));
       }
-    };
+    }
 
     // Write WAV header
-    writeString(view, 0, 'RIFF');
+    writeStringToBuffer(view, 0, 'RIFF');
     view.setUint32(4, 36 + audioBuffer.length * 2, true);
-    writeString(view, 8, 'WAVE');
-    writeString(view, 12, 'fmt ');
+    writeStringToBuffer(view, 8, 'WAVE');
+    writeStringToBuffer(view, 12, 'fmt ');
     
     view.setUint32(16, 16, true);
     view.setUint16(20, 1, true);
@@ -315,7 +336,7 @@ const Detection: React.FC = () => {
     view.setUint16(32, audioBuffer.numberOfChannels * 2, true);
     view.setUint16(34, 16, true);
     
-    writeString(view, 36, 'data');
+    writeStringToBuffer(view, 36, 'data');
     view.setUint32(40, audioBuffer.length * 2, true);
     
     // Write the PCM samples

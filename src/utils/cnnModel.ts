@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import { DetectionSession, DetectionEvent } from "@/integrations/supabase/customTypes";
+import type { DetectionSession as DBDetectionSession, DetectionEvent as DBDetectionEvent } from "@/integrations/supabase/customTypes";
+import { toast } from "sonner";
 
 // CNN Model interfaces
 export interface ModelMetadata {
@@ -44,11 +45,26 @@ export interface DetectionEvent {
   feature_data?: any;
 }
 
+// Define ProcessedAudio type
+export interface ProcessedAudio {
+  features: Float32Array;
+  sampleRate: number;
+  duration: number;
+}
+
 // Model state
 let model: any = null;
 let modelMetadata: ModelMetadata | null = null;
 let isModelLoaded = false;
 let isModelLoading = false;
+
+// Helper function to prepare audio for CNN
+const prepareForCNN = (processedAudio: ProcessedAudio): Float32Array => {
+  // This is a simple preparation function
+  // In a real implementation, you would normalize and format the data properly
+  // for the CNN model input requirements
+  return processedAudio.features;
+};
 
 // Load the CNN model
 export const loadModel = async (): Promise<boolean> => {
@@ -324,7 +340,9 @@ export const addDetectionEvent = async (
         session_id: sessionId,
         label: isApnea ? 'apnea' : 'normal',
         confidence: confidence,
-        feature_data: featureData
+        feature_data: featureData,
+        timestamp: new Date().toISOString(),
+        duration: 0 // Default duration
       });
       
     return !error;
