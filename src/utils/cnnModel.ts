@@ -2,56 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DetectionSession, DetectionEvent } from "@/integrations/supabase/customTypes";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
-
-// CNN Model interfaces
-export interface ModelMetadata {
-  name: string;
-  version: string;
-  inputShape: number[];
-  outputShape: number[];
-  featureType: 'mfcc' | 'melspectrogram' | 'raw';
-  classes: string[];
-  accuracy: number;
-  dateCreated: string;
-}
-
-export interface ModelPrediction {
-  label: 'apnea' | 'normal';
-  confidence: number;
-  timestamp: number;
-  features?: any;
-  rawScore?: number[];
-}
-
-export interface DetectionSession {
-  id: string;
-  user_id: string;
-  start_time: string;
-  end_time: string | null;
-  duration: number | null;
-  apnea_count: number;
-  normal_count: number;
-  average_confidence: number;
-  severity_score: number;
-  notes: string | null;
-}
-
-export interface DetectionEvent {
-  id: string;
-  session_id: string;
-  timestamp: string;
-  label: 'apnea' | 'normal';
-  confidence: number;
-  duration: number | null;
-  feature_data?: any;
-}
-
-// Define ProcessedAudio type
-export interface ProcessedAudio {
-  features: Float32Array;
-  sampleRate: number;
-  duration: number;
-}
+import { ProcessedAudio, ModelPrediction, ModelMetadata } from "@/utils/apneaDetection/types";
 
 // Model state
 let model: any = null;
