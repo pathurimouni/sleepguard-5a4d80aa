@@ -164,6 +164,32 @@ export const startContinuousDetection = (
   console.log(`Started continuous detection with interval ${actualInterval}ms`);
 };
 
+// Record and save audio
+export const startRecording = async (): Promise<MediaRecorder | null> => {
+  if (!isInitialized) {
+    const initialized = await initializeDetection();
+    if (!initialized) return null;
+  }
+  
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        sampleRate: 48000,
+        channelCount: 1
+      } 
+    });
+    
+    const mediaRecorder = new MediaRecorder(stream);
+    return mediaRecorder;
+  } catch (error) {
+    console.error("Error starting recording:", error);
+    return null;
+  }
+};
+
 // Import the analyze function from analyzer module
 // This needs to be imported at the bottom to avoid circular dependencies
 import { analyzeCurrentAudio } from "./analyzer";
